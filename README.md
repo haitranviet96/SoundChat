@@ -12,7 +12,20 @@ Clone the repo from GitHub:
 git clone https://github.com/haitranviet96/SoundChat
 ```
 
-Install the required packages:
+##Activate the environment
+Before you work on your project, activate the corresponding environment:
+
+```
+. venv/bin/activate
+```
+On Windows:
+```
+venv\Scripts\activate
+```
+
+Your shell prompt will change to show the name of the activated environment.
+
+Then, install the required packages:
 ```
 pip install -r requirements.txt
 ```
@@ -27,7 +40,7 @@ mysql> CREATE USER 'your_user_name'@'localhost' IDENTIFIED BY 'your_password';
 
 mysql> CREATE DATABASE soundchat;
 
-mysql> GRANT ALL PRIVILEGES ON soundchat . * TO 'abcxyz'@'localhost';
+mysql> GRANT ALL PRIVILEGES ON soundchat . * TO 'your_user_name'@'localhost';
 ```
 
 Note that `your_user_name` is the database user and `your_password` is the user password. After creating the database, run migrations as follows:
@@ -42,11 +55,19 @@ variables:
 * SECRET_KEY
 * SQLALCHEMY_DATABASE_URI (`'mysql://your_user_name:your_password@localhost/soundchat'`)
 
+Somethings like this:
+```$xslt
+# config.py
+SECRET_KEY = 'random_string'
+SQLALCHEMY_DATABASE_URI = 'mysql://your_user_name:your_password@localhost/soundchat'
+SQLALCHEMY_TRACK_MODIFICATIONS = False
+```
+
 ## Launching the Program
-Set the FLASK_APP and FLASK_CONFIG variables as follows:
+Set the FLASK_APP and FLASK_ENV variables as follows:
 
 * `export FLASK_APP=run.py`
-* `export FLASK_CONFIG=development`
+* `export FLASK_ENV=development`
 
 You can now run the app with the following command: `flask run`
 
