@@ -12,7 +12,7 @@ Clone the repo from GitHub:
 git clone https://github.com/haitranviet96/SoundChat
 ```
 
-##Activate the environment
+## Activate the environment
 Before you work on your project, activate the corresponding environment:
 
 ```
