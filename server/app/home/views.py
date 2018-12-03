@@ -1,6 +1,5 @@
 # app/home/views.py
 
-from flask import render_template
 from flask_jwt_extended import jwt_required
 
 from . import home

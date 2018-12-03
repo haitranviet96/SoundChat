@@ -1,6 +1,5 @@
 # app/models.py
 
-from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from app import db
@@ -12,7 +11,7 @@ joins = db.Table('joins',
                  )
 
 
-class User(UserMixin, db.Model):
+class User(db.Model):
     """
     Create an User table
     """
