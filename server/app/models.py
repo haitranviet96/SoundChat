@@ -1,9 +1,8 @@
 # app/models.py
 
-from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from app import db, login_manager
+from app import db
 
 joins = db.Table('joins',
                  db.Column('user_id', db.Integer, db.ForeignKey('users.id', use_alter=True)),
@@ -12,7 +11,7 @@ joins = db.Table('joins',
                  )
 
 
-class User(UserMixin, db.Model):
+class User(db.Model):
     """
     Create an User table
     """
@@ -50,11 +49,13 @@ class User(UserMixin, db.Model):
     def __repr__(self):
         return '<User: {}>'.format(self.username)
 
+    def save_to_db(self):
+        db.session.add(self)
+        db.session.commit()
 
-# Set up user_loader
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
+    @classmethod
+    def find_by_username(cls, username):
+        return cls.query.filter_by(username=username).first()
 
 
 class Song(db.Model):
