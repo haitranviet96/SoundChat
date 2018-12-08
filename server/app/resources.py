@@ -1,3 +1,5 @@
+import datetime
+
 from flask_restful import Resource, reqparse
 from flask_jwt_extended import (create_access_token, create_refresh_token, jwt_required, jwt_refresh_token_required,
                                 get_jwt_identity)
@@ -31,10 +33,12 @@ class UserRegistration(Resource):
 
         try:
             new_user.save_to_db()
-            access_token = create_access_token(identity=data['username'])
+            expires = datetime.timedelta(days=7)
+            access_token = create_access_token(identity=data['username'], expires_delta=expires)
             refresh_token = create_refresh_token(identity=data['username'])
             return {
                 'message': 'User {} was created'.format(data['username']),
+                'user_id': new_user.id,
                 'access_token': access_token,
                 'refresh_token': refresh_token
             }
@@ -55,6 +59,7 @@ class UserLogin(Resource):
             refresh_token = create_refresh_token(identity=data['username'])
             return {
                 'message': 'Logged in as {}'.format(current_user.username),
+                'user_id': current_user.id,
                 'access_token': access_token,
                 'refresh_token': refresh_token
             }
@@ -74,6 +79,5 @@ class TokenRefresh(Resource):
 class SecretResource(Resource):
     @jwt_required
     def get(self):
-        return {
-            'answer': 42
-        }
+        current_user = get_jwt_identity()
+        return {'logged_in_as': current_user}, 200
