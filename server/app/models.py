@@ -1,4 +1,5 @@
 # app/models.py
+import datetime
 
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -86,7 +87,7 @@ class Room(db.Model):
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     status = db.Column(db.String(10))
     current_song_id = db.Column(db.Integer, db.ForeignKey('songs.id', use_alter=True))
-    time_play = db.Column(db.Date)
+    time_play = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     repeat = db.Column(db.Boolean, default=False)
     shuffle = db.Column(db.Boolean, default=False)
     playlist = db.relationship('Song', foreign_keys=lambda: Song.room_id, backref='room', lazy='dynamic')
@@ -94,3 +95,22 @@ class Room(db.Model):
 
     def __repr__(self):
         return '<Room: {}>'.format(self.name)
+
+    @classmethod
+    def find_by_name(cls, name):
+        return cls.query.filter_by(name=name).first()
+
+
+class Message(db.Model):
+    """
+   Create a Message table
+   """
+    __tablename__ = 'messages'
+
+    id = db.Column(db.Integer, primary_key=True)
+    room_id = db.Column(db.Integer, db.ForeignKey('rooms.id'))
+    sender_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    time = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    content = db.Column(db.String())
+    room = db.relationship("Room", foreign_keys=[room_id])
+    sender = db.relationship("User", foreign_keys=[sender_id])

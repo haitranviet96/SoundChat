@@ -6,8 +6,16 @@ from flask_restful import Api
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 
+import boto3, botocore
+
 # local imports
 from config import app_config
+
+s3 = boto3.client(
+    "s3",
+    aws_access_key_id=app_config.S3_KEY,
+    aws_secret_access_key=app_config.S3_SECRET
+)
 
 db = SQLAlchemy()
 
@@ -31,5 +39,8 @@ def create_app(config_name):
 
     from .home import home as home_blueprint
     app.register_blueprint(home_blueprint)
+
+    from .rooms import rooms as rooms_blueprint
+    app.register_blueprint(rooms_blueprint)
 
     return app

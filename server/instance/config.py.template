@@ -1,3 +1,9 @@
 SECRET_KEY = 'random_string'
 SQLALCHEMY_DATABASE_URI = 'mysql://your_user_name:your_password@localhost/soundchat'
 SQLALCHEMY_TRACK_MODIFICATIONS = False
+JWT_SECRET_KEY = 'jwt-secret-string'
+
+S3_BUCKET                 = os.environ.get("S3_BUCKET_NAME")
+S3_KEY                    = os.environ.get("S3_ACCESS_KEY")
+S3_SECRET                 = os.environ.get("S3_SECRET_ACCESS_KEY")
+S3_LOCATION               = 'http://{}.s3.amazonaws.com/'.format(S3_BUCKET)
