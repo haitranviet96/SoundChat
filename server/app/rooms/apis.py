@@ -88,12 +88,25 @@ def upload_file_to_s3(file, bucket_name, acl="public-read"):
     return "{}{}".format(app.app_config.S3_LOCATION, file.filename)
 
 
-@rooms.route('/rooms', methods=['PUT'])
+@rooms.route('/rooms/<int:room_id>', methods=['PUT'])
 @jwt_required
-def edit_room():
+def edit_room(room_id):
     user_id = request.args.get('user_id')
     data = room_update_parser.parse_args()
 
-    # Room.update().where(Room.id == data['id']).values(owner_id=1, current_song_id=1, time_play=datetime.datetime.utcnow)
+    # Room.update().where(Room.id == room_id).values(owner_id=1, current_song_id=1, time_play=datetime.datetime.utcnow)
 
-    return jsonify(Room.query.filter_by(id=data['id']).first())
+    return jsonify(Room.query.filter_by(id=room_id).first())
+
+
+@rooms.route('/rooms/<int:room_id>', methods=['GET'])
+@jwt_required
+def get_room(room_id):
+    user_id = request.args.get('user_id')
+    current_user = get_jwt_identity()
+    if user_id is None:
+        return {'message': 'user_id can not be null.'}, 400
+    elif user_id != User.find_by_username(current_user).id:
+        return {'message': 'You are not authorized.'}, 401
+    else:
+        return jsonify(Room.query.filter_by(id=room_id).first())
