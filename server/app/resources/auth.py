@@ -21,13 +21,13 @@ class UserRegistration(Resource):
         data = register_parser.parse_args()
 
         if not data['username'][:1].isalpha():
-            return {'message': 'Username must starts with an alphabet character.'}, 400
+            return {"status": "error", 'message': 'Username must starts with an alphabet character.'}, 400
         if len(data['password']) < 8:
-            return {'message': 'Password must has at least 8 characters.'}, 400
+            return {"status": "error", 'message': 'Password must has at least 8 characters.'}, 400
         if data['password'] != data['confirm_password']:
-            return {'message': 'Confirm password does not match.'}, 400
+            return {"status": "error", 'message': 'Confirm password does not match.'}, 400
         if User.find_by_username(data['username']):
-            return {'message': 'User {} already exists'.format(data['username'])}
+            return {"status": "error", 'message': 'User {} already exists'.format(data['username'])}, 400
 
         new_user = User(username=data['username'], password=data['password'])
 
@@ -37,13 +37,14 @@ class UserRegistration(Resource):
             access_token = create_access_token(identity=data['username'], expires_delta=expires)
             refresh_token = create_refresh_token(identity=data['username'])
             return {
+                "status": "success",
                 'message': 'User {} was created'.format(data['username']),
                 'user_id': new_user.id,
                 'access_token': access_token,
                 'refresh_token': refresh_token
             }
         except:
-            return {'message': 'Something went wrong'}, 500
+            return {"status": 'error', 'message': 'Something went wrong'}, 500
 
 
 class UserLogin(Resource):
@@ -52,12 +53,13 @@ class UserLogin(Resource):
         current_user = User.find_by_username(data['username'])
 
         if not current_user:
-            return {'message': 'User {} doesn\'t exist'.format(data['username'])}
+            return {"status": "error", 'message': 'User {} doesn\'t exist'.format(data['username'])}
 
         if current_user.verify_password(data['password']):
             access_token = create_access_token(identity=data['username'])
             refresh_token = create_refresh_token(identity=data['username'])
             return {
+                "status": "success",
                 'message': 'Logged in as {}'.format(current_user.username),
                 'user_id': current_user.id,
                 'access_token': access_token,
@@ -65,7 +67,7 @@ class UserLogin(Resource):
             }
 
         else:
-            return {'message': 'Wrong credentials'}
+            return {"status": "error", 'message': 'Wrong credentials'}
 
 
 class TokenRefresh(Resource):
@@ -73,11 +75,11 @@ class TokenRefresh(Resource):
     def post(self):
         current_user = get_jwt_identity()
         access_token = create_access_token(identity=current_user)
-        return {'access_token': access_token}
+        return {"status": "success", 'access_token': access_token}, 200
 
 
 class SecretResource(Resource):
     @jwt_required
     def get(self):
         current_user = get_jwt_identity()
-        return {'logged_in_as': current_user}, 200
+        return {"status": "success", 'logged_in_as': current_user}, 200
