@@ -12,7 +12,7 @@ ma = Marshmallow(app)
 joins = db.Table('joins',
                  db.Column('user_id', db.Integer, db.ForeignKey('users.id', use_alter=True)),
                  db.Column('room_id', db.Integer, db.ForeignKey('rooms.id', use_alter=True)),
-                 db.Column('unread_message_count', db.Integer)
+                 db.Column('unread_message_count', db.Integer, default=0)
                  )
 
 

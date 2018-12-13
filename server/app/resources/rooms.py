@@ -1,3 +1,5 @@
+import time
+
 from flask import request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
@@ -26,15 +28,20 @@ class Rooms(Resource):
         join = request.args.get('join')
         limit = request.args.get('limit')
 
-        if join is None:
+        current_user = User.find_by_username(get_jwt_identity())
+
+        if user_id is None:
+            return {"status": "error", 'message': 'user_id can not be null.'}, 400
+        elif user_id != str(current_user.id):
+            return {"status": "error", 'message': 'You are not authorized.'}, 401
+        elif join is None:
             room_list = Room.query.all()
         else:
             if join == 'true':
-                room_list = Room.query.filter(Room.members.any(id=user_id)) \
-                    .limit(limit if limit is not None else 15).all()
+                room_list = current_user.joined_room
             else:
-                room_list = Room.query.outerjoin(joins, joins.c.user_id == user_id) \
-                    .filter().limit(limit if limit is not None else 15).all()
+                room_list = Room.query.filter(~Room.members.any(id=user_id)) \
+                    .limit(limit if limit is not None else 15).all()
         result = rooms_schema.dump(room_list)
         return {"status": "success", "data": result}, 200
 
@@ -49,35 +56,39 @@ class Rooms(Resource):
             return {"status": "error", 'message': 'You have to upload at least one song'}, 400
         if Room.find_by_name(data['name']):
             return {"status": "error", 'message': 'Room {} already exists'.format(data['name'])}, 400
-        current_user = get_jwt_identity()
+        current_user = User.find_by_username(get_jwt_identity())
         song = request.files["song"]
         if user_id is None:
             return {"status": "error", 'message': 'user_id can not be null.'}, 400
-        elif user_id != str(User.find_by_username(current_user).id):
+        elif user_id != str(current_user.id):
             return {"status": "error", 'message': 'You are not authorized.'}, 401
         elif song.filename == "":
             return {"status": "error", 'message': "Please select a file"}, 400
         elif not (song and allowed_file(song.filename)):
             return {"status": "error", 'message': "Files must be in mp3 format."}, 400
         else:
+            link = None
             try:
                 room = Room(name=data['name'])
                 db.session.add(room)
                 song_name = secure_filename(song.filename)
                 link = upload_file_to_s3(song, config.S3_BUCKET)
-                print(link)
+                db.session.flush()
+                db.session.execute(joins.insert().values(user_id=user_id, room_id=room.id))
                 new_song = Song(name=song_name, link=link, room_id=room.id)
                 room.current_song_id = new_song.id
                 room.current_song = new_song
                 room.owner_id = user_id
                 db.session.add(new_song)
-                db.session.commit()
-                result = room_schema.dump(room).data
             except Exception as e:
+                if link is not None:
+                    s3.delete_object(Bucket=config.S3_BUCKET, Key=link[len(config.S3_LOCATION):])
                 db.session.rollback()
                 print(repr(e))
                 return {"status": "error",
                         'message': "Something wrong happen when creating room. Please try again."}, 400
+            db.session.commit()
+            result = room_schema.dump(room)
             return {"status": "success", "data": result}, 201
 
 
@@ -86,8 +97,10 @@ def allowed_file(filename):
 
 
 def upload_file_to_s3(file, bucket_name, acl="public-read"):
+    splitted_file_name = file.filename.rsplit('.', 1)
+    unique_file_name = splitted_file_name[0] + "_" + str(int(time.time())) + "." + splitted_file_name[1]
     try:
-        s3.upload_fileobj(file, bucket_name, file.filename,
+        s3.upload_fileobj(file, bucket_name, unique_file_name,
                           ExtraArgs={
                               "ACL": acl,
                               "ContentType": file.content_type
@@ -95,10 +108,10 @@ def upload_file_to_s3(file, bucket_name, acl="public-read"):
                           )
     except Exception as e:
         raise e
-    return "{}{}".format(config.S3_LOCATION, file.filename)
+    return "{}{}".format(config.S3_LOCATION, unique_file_name)
 
 
-class RoomsId(Resource):
+class RoomsDetails(Resource):
     @jwt_required
     def put(self, room_id):
         user_id = request.args.get('user_id')

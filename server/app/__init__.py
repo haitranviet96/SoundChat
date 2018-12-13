@@ -34,6 +34,7 @@ def create_app(config_name):
     from app import models
     from app.resources import auth
     from app.resources import rooms
+    from app.resources import utils
 
     api = Api(app)
 
@@ -42,7 +43,9 @@ def create_app(config_name):
     api.add_resource(auth.TokenRefresh, '/token/refresh')
     api.add_resource(auth.SecretResource, '/secret')
 
-    api.add_resource(rooms.RoomsId, '/rooms/<int:room_id>')
+    api.add_resource(utils.S3Resource, '/s3')
+
+    api.add_resource(rooms.RoomsDetails, '/rooms/<int:room_id>')
     api.add_resource(rooms.Rooms, '/rooms')
 
     from .home import home as home_blueprint
