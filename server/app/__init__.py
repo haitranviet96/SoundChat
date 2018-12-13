@@ -11,8 +11,13 @@ import boto3
 
 # local imports
 from config import app_config
+from instance import config
 
-s3 = boto3
+s3 = boto3.client(
+    "s3", config.S3_REGION,
+    aws_access_key_id=config.S3_KEY,
+    aws_secret_access_key=config.S3_SECRET
+)
 
 db = SQLAlchemy()
 
@@ -25,12 +30,6 @@ def create_app(config_name):
     db.init_app(app)
     migrate = Migrate(app, db)
     jwt = JWTManager(app)
-
-    s3.client(
-        "s3",
-        aws_access_key_id=app.config['S3_KEY'],
-        aws_secret_access_key=app.config['S3_SECRET']
-    )
 
     from app import models
     from app.resources import auth

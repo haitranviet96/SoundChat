@@ -56,7 +56,8 @@ class UserLogin(Resource):
             return {"status": "error", 'message': 'User {} doesn\'t exist'.format(data['username'])}
 
         if current_user.verify_password(data['password']):
-            access_token = create_access_token(identity=data['username'])
+            expires = datetime.timedelta(days=7)
+            access_token = create_access_token(identity=data['username'], expires_delta=expires)
             refresh_token = create_refresh_token(identity=data['username'])
             return {
                 "status": "success",

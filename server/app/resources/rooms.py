@@ -1,11 +1,11 @@
-from flask import jsonify, request
+from flask import request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 from flask_restful import Resource, reqparse
 
-import app
 from app import db, s3
-from app.models import Room, joins, User, Song
+from app.models import Room, joins, User, Song, room_schema, rooms_schema
+from instance import config
 
 room_parser = reqparse.RequestParser()
 room_parser.add_argument('name', help='This field cannot be blank', required=True)
@@ -35,7 +35,8 @@ class Rooms(Resource):
             else:
                 room_list = Room.query.outerjoin(joins, joins.c.user_id == user_id) \
                     .filter().limit(limit if limit is not None else 15).all()
-        return {"status": "success", "data": jsonify(room_list)}, 200
+        result = rooms_schema.dump(room_list)
+        return {"status": "success", "data": result}, 200
 
     @jwt_required
     def post(self):
@@ -44,28 +45,44 @@ class Rooms(Resource):
         """
         user_id = request.args.get('user_id')
         data = room_parser.parse_args()
-        if data['songs'] is None:
+        if 'song' not in request.files:
             return {"status": "error", 'message': 'You have to upload at least one song'}, 400
         if Room.find_by_name(data['name']):
             return {"status": "error", 'message': 'Room {} already exists'.format(data['name'])}, 400
         current_user = get_jwt_identity()
+        song = request.files["song"]
         if user_id is None:
             return {"status": "error", 'message': 'user_id can not be null.'}, 400
-        elif user_id != User.find_by_username(current_user).id:
+        elif user_id != str(User.find_by_username(current_user).id):
             return {"status": "error", 'message': 'You are not authorized.'}, 401
+        elif song.filename == "":
+            return {"status": "error", 'message': "Please select a file"}, 400
+        elif not (song and allowed_file(song.filename)):
+            return {"status": "error", 'message': "Files must be in mp3 format."}, 400
         else:
-            print(request.json)
-            room = Room(name=data['name'])
-            songs = data.getlist("songs")
-            db.add(room)
-            for song in songs:
-                if song.filename == "":
-                    return "Please select a file"
+            try:
+                room = Room(name=data['name'])
+                db.session.add(room)
                 song_name = secure_filename(song.filename)
-                link = upload_file_to_s3(song, app.config['S3_BUCKET'])
-                db.add(Song(song_name, link, room.id))
-            db.commit()
-            return {"status": "success", "data": jsonify(room)}, 200
+                link = upload_file_to_s3(song, config.S3_BUCKET)
+                print(link)
+                new_song = Song(name=song_name, link=link, room_id=room.id)
+                room.current_song_id = new_song.id
+                room.current_song = new_song
+                room.owner_id = user_id
+                db.session.add(new_song)
+                db.session.commit()
+                result = room_schema.dump(room).data
+            except Exception as e:
+                db.session.rollback()
+                print(repr(e))
+                return {"status": "error",
+                        'message': "Something wrong happen when creating room. Please try again."}, 400
+            return {"status": "success", "data": result}, 201
+
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 def upload_file_to_s3(file, bucket_name, acl="public-read"):
@@ -77,9 +94,8 @@ def upload_file_to_s3(file, bucket_name, acl="public-read"):
                           }
                           )
     except Exception as e:
-        print("Something Happened: ", e)
-        return e
-    return "{}{}".format(app.config['S3_LOCATION'], file.filename)
+        raise e
+    return "{}{}".format(config.S3_LOCATION, file.filename)
 
 
 class RoomsId(Resource):
@@ -90,7 +106,7 @@ class RoomsId(Resource):
 
         # Room.update().where(Room.id == room_id).values(owner_id=1, current_song_id=1, time_play=datetime.datetime.utcnow)
 
-        return {"status": "success", "data": jsonify(Room.query.filter_by(id=room_id).first())}, 200
+        return {"status": "success", "data": Room.query.filter_by(id=room_id).first()}, 200
 
     @jwt_required
     def get(self, room_id):
@@ -101,4 +117,4 @@ class RoomsId(Resource):
         elif user_id != User.find_by_username(current_user).id:
             return {"status": "error", 'message': 'You are not authorized.'}, 401
         else:
-            return {"status": "success", "data": jsonify(Room.query.filter_by(id=room_id).first())}, 200
+            return {"status": "success", "data": Room.query.filter_by(id=room_id).first()}, 200
