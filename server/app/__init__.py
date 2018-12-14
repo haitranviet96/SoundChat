@@ -46,6 +46,8 @@ def create_app(config_name):
     api.add_resource(utils.S3Resource, '/s3')
 
     api.add_resource(rooms.RoomsDetails, '/rooms/<int:room_id>')
+    api.add_resource(rooms.RoomsPlaylist, '/rooms/<int:room_id>/playlist')
+    api.add_resource(rooms.RoomsPlaylistDetails, '/rooms/<int:room_id>/playlist/<int:song_id>')
     api.add_resource(rooms.Rooms, '/rooms')
 
     from .home import home as home_blueprint

@@ -6,7 +6,7 @@ from werkzeug.utils import secure_filename
 from flask_restful import Resource, reqparse
 
 from app import db, s3
-from app.models import Room, joins, User, Song, room_schema, rooms_schema
+from app.models import Room, joins, User, Song, room_schema, rooms_schema, songs_schema, song_schema
 from instance import config
 
 room_parser = reqparse.RequestParser()
@@ -86,7 +86,7 @@ class Rooms(Resource):
                 db.session.rollback()
                 print(repr(e))
                 return {"status": "error",
-                        'message': "Something wrong happen when creating room. Please try again."}, 400
+                        'message': "Something wrong happen while creating room. Please try again."}, 400
             db.session.commit()
             result = room_schema.dump(room)
             return {"status": "success", "data": result}, 201
@@ -131,3 +131,73 @@ class RoomsDetails(Resource):
             return {"status": "error", 'message': 'You are not authorized.'}, 401
         else:
             return {"status": "success", "data": Room.query.filter_by(id=room_id).first()}, 200
+
+
+class RoomsPlaylist(Resource):
+    @jwt_required
+    def get(self, room_id):
+        room = Room.query.filter_by(id=room_id).first()
+        if room:
+            result = songs_schema.dump(room.playlist)
+            return {"status": "success", "data": result}, 200
+        else:
+            return {"status": "error", "message": "Room does not exist."}, 400
+
+    @jwt_required
+    def post(self, room_id):
+        song_file = request.files["song"]
+        if song_file.filename == "":
+            return {"status": "error", 'message': "Please select a file"}, 400
+        elif not (song_file and allowed_file(song_file.filename)):
+            return {"status": "error", 'message': "Files must be in mp3 format."}, 400
+        elif Room.query.filter_by(id=room_id).first() is None:
+            return {"status": "error", "message": "Room does not exist."}, 400
+        else:
+            link = None
+            try:
+                song_name = secure_filename(song_file.filename)
+                link = upload_file_to_s3(song_file, config.S3_BUCKET)
+                new_song = Song(name=song_name, link=link, room_id=room_id)
+                db.session.add(new_song)
+            except Exception as e:
+                if link is not None:
+                    s3.delete_object(Bucket=config.S3_BUCKET, Key=link[len(config.S3_LOCATION):])
+                db.session.rollback()
+                print(repr(e))
+                return {"status": "error",
+                        'message': "Something wrong happen while uploading new song. Please try again."}, 400
+            db.session.commit()
+            result = song_schema.dump(new_song)
+            return {"status": "success", "data": result}, 200
+
+
+class RoomsPlaylistDetails(Resource):
+    @jwt_required
+    def delete(self, room_id, song_id):
+        if song_id is None:
+            return {"status": "error",
+                    'message': "song_id can not be null"}, 400
+        else:
+            song = Song.query.filter_by(id=song_id).first()
+            if song is None or song.room_id != room_id:
+                return {"status": "error",
+                        'message': "The song is not exist."}, 400
+            if Song.query.filter_by(room_id=room_id).count() == 1:
+                return {"status": "error",
+                        'message': "The song is the last song in the playlist. You must have at least one song."}, 400
+            s3.delete_object(Bucket=config.S3_BUCKET, Key=song.link[len(config.S3_LOCATION):])
+            db.session.delete(song)
+            db.session.commit()
+            return {"status": "success", "message": song.name + " was deleted."}, 200
+
+    @jwt_required
+    def get(self, room_id, song_id):
+        if song_id is None:
+            return {"status": "error",
+                    'message': "song_id can not be null"}, 400
+        else:
+            song = Song.query.filter_by(id=song_id).first()
+            if song is None or song.room_id != room_id:
+                return {"status": "error",
+                        'message': "The song is not exist."}, 400
+            return {"status": "success", "data": song_schema.dump(song)}, 200

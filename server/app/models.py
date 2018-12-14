@@ -145,6 +145,7 @@ rooms_schema = RoomSchema(many=True)
 
 class SongSchema(ma.Schema):
     class Meta:
+        ordered = True
         fields = ('id', 'name', 'link')
 
 
@@ -156,4 +157,5 @@ class MessageSchema(ma.Schema):
     time = fields.fields.DateTime(format='%Y-%m-%d %H:%M:%S')
 
     class Meta:
+        ordered = True
         fields = ('id', 'room', 'sender', 'time', 'content')
