@@ -1,13 +1,14 @@
-import datetime
 import time
 
 from flask import request
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from sqlalchemy import delete
 from werkzeug.utils import secure_filename
 from flask_restful import Resource, reqparse
 
 from app import db, s3
-from app.models import Room, joins, User, Song, room_schema, rooms_schema, songs_schema, song_schema
+from app.models import Room, joins, User, Song, room_schema, rooms_schema, songs_schema, song_schema, user_schema, \
+    users_schema
 from instance import config
 
 room_parser = reqparse.RequestParser()
@@ -217,3 +218,76 @@ class RoomsPlaylistDetails(Resource):
                 return {"status": "error",
                         'message': "The song is not exist."}, 400
             return {"status": "success", "data": song_schema.dump(song)}, 200
+
+
+class RoomsMembers(Resource):
+    @jwt_required
+    def post(self, room_id):
+        user_id = request.args.get('user_id')
+        current_user = User.find_by_username(get_jwt_identity())
+        room = Room.query.filter_by(id=room_id).first()
+        if user_id is None:
+            return {"status": "error", 'message': 'user_id can not be null.'}, 400
+        elif user_id != str(current_user.id):
+            return {"status": "error", 'message': 'You are not authorized.'}, 401
+        elif room is None:
+            return {"status": "error", 'message': 'Room does not exist.'}, 400
+        elif current_user in room.members:
+            return {"status": "error", 'message': 'You are already in this room.'}, 400
+        else:
+            # user login
+            db.session.execute(joins.insert().values(user_id=user_id, room_id=room_id))
+            db.session.commit()
+            return {"status": "success", "message": "You successfully enter room " + room.name,
+                    "data": room_schema.dump(room)}, 200
+
+    @jwt_required
+    def get(self, room_id):
+        user_id = request.args.get('user_id')
+        current_user = User.find_by_username(get_jwt_identity())
+        room = Room.query.filter_by(id=room_id).first()
+        if user_id is None:
+            return {"status": "error", 'message': 'user_id can not be null.'}, 400
+        elif user_id != str(current_user.id):
+            return {"status": "error", 'message': 'You are not authorized.'}, 401
+        elif room is None:
+            return {"status": "error", 'message': 'Room does not exist.'}, 400
+        elif current_user not in room.members:
+            return {"status": "error", 'message': 'You are not in this room.'}, 400
+        else:
+            return {"status": "success", "data": users_schema.dump(room.members)}, 200
+
+    @jwt_required
+    def delete(self, room_id):
+        user_id = request.args.get('user_id')
+        current_user = User.find_by_username(get_jwt_identity())
+        room = Room.query.filter_by(id=room_id).first()
+        if user_id is None:
+            return {"status": "error", 'message': 'user_id can not be null.'}, 400
+        elif user_id != str(current_user.id):
+            return {"status": "error", 'message': 'You are not authorized.'}, 401
+        elif room is None:
+            return {"status": "error", 'message': 'Room does not exist.'}, 400
+        elif current_user not in room.members:
+            return {"status": "error", 'message': 'You are not in this room.'}, 400
+        elif room.members.count() == 1:
+            # delete room + delete song + delete joins
+            db.session.execute(delete(joins).where(joins.c.user_id == user_id).where(joins.c.room_id == room_id))
+            room.current_song_id = None
+            for song in room.playlist:
+                s3.delete_object(Bucket=config.S3_BUCKET, Key=song.link[len(config.S3_LOCATION):])
+            db.session.delete(room)
+        else:
+            if current_user is room.owner:
+                # make some one owner , then delete join
+                new_owner = room.members[1]
+                room.owner_id = new_owner.id
+                db.session.execute(delete(joins).where(joins.c.user_id == user_id).where(joins.c.room_id == room_id))
+                # return {"status": "success",
+                #         "message": "User " + new_owner.name + " becomes room owner."
+                #                                               " User " + current_user.name + " left the room."}, 200
+            else:
+                db.session.execute(delete(joins).where(joins.c.user_id == user_id).where(joins.c.room_id == room_id))
+                # return {"status": "success", "message": "User " + current_user.name + " left the room."}, 200
+        db.session.commit()
+        return {"status": "success", "message": "You have left the room."}, 200

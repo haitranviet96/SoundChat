@@ -94,7 +94,7 @@ class Room(db.Model):
     time_play = db.Column(db.DATETIME, default=datetime.datetime.now)
     repeat = db.Column(db.Boolean, default=False)
     shuffle = db.Column(db.Boolean, default=False)
-    playlist = db.relationship('Song', foreign_keys=lambda: Song.room_id, backref='room', lazy='dynamic')
+    playlist = db.relationship('Song', foreign_keys=lambda: Song.room_id, backref='room', lazy='dynamic', cascade="all, delete-orphan")
     current_song = db.relationship("Song", foreign_keys=[current_song_id])
 
     def __repr__(self):
