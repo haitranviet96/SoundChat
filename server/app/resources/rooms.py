@@ -1,3 +1,4 @@
+import datetime
 import time
 
 from flask import request
@@ -13,7 +14,9 @@ room_parser = reqparse.RequestParser()
 room_parser.add_argument('name', help='This field cannot be blank', required=True)
 
 room_update_parser = reqparse.RequestParser()
-room_update_parser.add_argument('id', help='This field cannot be blank', required=True)
+room_update_parser.add_argument('current_song_id', type=int, required=True)
+room_update_parser.add_argument('repeat', type=bool, required=True)
+room_update_parser.add_argument('shuffle', type=bool, required=True)
 
 ALLOWED_EXTENSIONS = {'mp3'}
 
@@ -115,22 +118,35 @@ class RoomsDetails(Resource):
     @jwt_required
     def put(self, room_id):
         user_id = request.args.get('user_id')
+        current_user = User.find_by_username(get_jwt_identity())
         data = room_update_parser.parse_args()
-
-        # Room.update().where(Room.id == room_id).values(owner_id=1, current_song_id=1, time_play=datetime.datetime.utcnow)
-
-        return {"status": "success", "data": Room.query.filter_by(id=room_id).first()}, 200
+        new_song_id = data['current_song_id']
+        song = Song.query.filter_by(id=new_song_id).first()
+        if user_id is None:
+            return {"status": "error", 'message': 'user_id can not be null.'}, 400
+        elif user_id != str(current_user.id):
+            return {"status": "error", 'message': 'You are not authorized.'}, 401
+        elif song is None or song.room_id != room_id:
+            return {"status": "error", 'message': "The song is not exist."}, 400
+        else:
+            room = Room.query.filter_by(id=room_id).first()
+            room.current_song_id = new_song_id
+            room.time_play = time.strftime('%Y-%m-%d %H:%M:%S')
+            room.repeat = data['repeat']
+            room.shuffle = data['shuffle']
+            db.session.commit()
+            return {"status": "success", "data": room_schema.dump(room)}, 200
 
     @jwt_required
     def get(self, room_id):
         user_id = request.args.get('user_id')
-        current_user = get_jwt_identity()
+        current_user = User.find_by_username(get_jwt_identity())
         if user_id is None:
             return {"status": "error", 'message': 'user_id can not be null.'}, 400
-        elif user_id != User.find_by_username(current_user).id:
+        elif user_id != str(current_user.id):
             return {"status": "error", 'message': 'You are not authorized.'}, 401
         else:
-            return {"status": "success", "data": Room.query.filter_by(id=room_id).first()}, 200
+            return {"status": "success", "data": room_schema.dump(Room.query.filter_by(id=room_id).first())}, 200
 
 
 class RoomsPlaylist(Resource):
