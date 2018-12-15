@@ -11,8 +11,13 @@ import boto3
 
 # local imports
 from config import app_config
+from instance import config
 
-s3 = boto3
+s3 = boto3.client(
+    "s3", config.S3_REGION,
+    aws_access_key_id=config.S3_KEY,
+    aws_secret_access_key=config.S3_SECRET
+)
 
 db = SQLAlchemy()
 
@@ -26,15 +31,10 @@ def create_app(config_name):
     migrate = Migrate(app, db)
     jwt = JWTManager(app)
 
-    s3.client(
-        "s3",
-        aws_access_key_id=app.config['S3_KEY'],
-        aws_secret_access_key=app.config['S3_SECRET']
-    )
-
     from app import models
     from app.resources import auth
     from app.resources import rooms
+    from app.resources import utils
 
     api = Api(app)
 
@@ -43,7 +43,11 @@ def create_app(config_name):
     api.add_resource(auth.TokenRefresh, '/token/refresh')
     api.add_resource(auth.SecretResource, '/secret')
 
-    api.add_resource(rooms.RoomsId, '/rooms/<int:room_id>')
+    api.add_resource(utils.S3Resource, '/s3')
+
+    api.add_resource(rooms.RoomsDetails, '/rooms/<int:room_id>')
+    api.add_resource(rooms.RoomsPlaylist, '/rooms/<int:room_id>/playlist')
+    api.add_resource(rooms.RoomsPlaylistDetails, '/rooms/<int:room_id>/playlist/<int:song_id>')
     api.add_resource(rooms.Rooms, '/rooms')
 
     from .home import home as home_blueprint

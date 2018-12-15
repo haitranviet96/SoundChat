@@ -1,14 +1,18 @@
 # app/models.py
 import datetime
 
+from flask_marshmallow import Marshmallow, fields
 from werkzeug.security import generate_password_hash, check_password_hash
 
+import app
 from app import db
+
+ma = Marshmallow(app)
 
 joins = db.Table('joins',
                  db.Column('user_id', db.Integer, db.ForeignKey('users.id', use_alter=True)),
                  db.Column('room_id', db.Integer, db.ForeignKey('rooms.id', use_alter=True)),
-                 db.Column('unread_message_count', db.Integer)
+                 db.Column('unread_message_count', db.Integer, default=0)
                  )
 
 
@@ -85,9 +89,9 @@ class Room(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(60), unique=True)
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    status = db.Column(db.String(10))
+    status = db.Column(db.String(10), default='Available')
     current_song_id = db.Column(db.Integer, db.ForeignKey('songs.id', use_alter=True))
-    time_play = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    time_play = db.Column(db.DATETIME, default=datetime.datetime.now)
     repeat = db.Column(db.Boolean, default=False)
     shuffle = db.Column(db.Boolean, default=False)
     playlist = db.relationship('Song', foreign_keys=lambda: Song.room_id, backref='room', lazy='dynamic')
@@ -103,14 +107,55 @@ class Room(db.Model):
 
 class Message(db.Model):
     """
-   Create a Message table
-   """
+    Create a Message table
+    """
     __tablename__ = 'messages'
 
     id = db.Column(db.Integer, primary_key=True)
     room_id = db.Column(db.Integer, db.ForeignKey('rooms.id'))
     sender_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    time = db.Column(db.DateTime, default=datetime.datetime.utcnow)
-    content = db.Column(db.String())
+    time = db.Column(db.DATETIME, default=datetime.datetime.utcnow)
+    content = db.Column(db.Text)
     room = db.relationship("Room", foreign_keys=[room_id])
     sender = db.relationship("User", foreign_keys=[sender_id])
+
+
+##### SCHEMAS #####
+
+class UserSchema(ma.Schema):
+    class Meta:
+        fields = ('id', 'username')
+
+
+user_schema = UserSchema()
+users_schema = UserSchema(many=True)
+
+
+class RoomSchema(ma.Schema):
+    time_play = fields.fields.DateTime(format='%Y-%m-%d %H:%M:%S')
+
+    class Meta:
+        ordered = True
+        fields = ('id', 'name', 'owner_id', 'status', 'current_song_id', 'time_play', 'repeat', 'shuffle')
+
+
+room_schema = RoomSchema()
+rooms_schema = RoomSchema(many=True)
+
+
+class SongSchema(ma.Schema):
+    class Meta:
+        ordered = True
+        fields = ('id', 'name', 'link')
+
+
+song_schema = SongSchema()
+songs_schema = SongSchema(many=True)
+
+
+class MessageSchema(ma.Schema):
+    time = fields.fields.DateTime(format='%Y-%m-%d %H:%M:%S')
+
+    class Meta:
+        ordered = True
+        fields = ('id', 'room', 'sender', 'time', 'content')
