@@ -8,7 +8,7 @@ from flask_restful import Resource, reqparse
 
 from app import db, s3
 from app.models import Room, joins, User, Song, room_schema, rooms_schema, songs_schema, song_schema, user_schema, \
-    users_schema
+    users_schema, messages_schema, Message
 from instance import config
 
 room_parser = reqparse.RequestParser()
@@ -18,6 +18,9 @@ room_update_parser = reqparse.RequestParser()
 room_update_parser.add_argument('current_song_id', type=int, required=True)
 room_update_parser.add_argument('repeat', type=bool, required=True)
 room_update_parser.add_argument('shuffle', type=bool, required=True)
+
+message_parser = reqparse.RequestParser()
+message_parser.add_argument('content', required=True)
 
 ALLOWED_EXTENSIONS = {'mp3'}
 
@@ -123,14 +126,16 @@ class RoomsDetails(Resource):
         data = room_update_parser.parse_args()
         new_song_id = data['current_song_id']
         song = Song.query.filter_by(id=new_song_id).first()
+        room = Room.query.filter_by(id=room_id).first()
         if user_id is None:
             return {"status": "error", 'message': 'user_id can not be null.'}, 400
         elif user_id != str(current_user.id):
             return {"status": "error", 'message': 'You are not authorized.'}, 401
+        elif room is None:
+            return {"status": "error", "message": "Room does not exist."}, 400
         elif song is None or song.room_id != room_id:
             return {"status": "error", 'message': "The song is not exist."}, 400
         else:
-            room = Room.query.filter_by(id=room_id).first()
             room.current_song_id = new_song_id
             room.time_play = time.strftime('%Y-%m-%d %H:%M:%S')
             room.repeat = data['repeat']
@@ -142,12 +147,15 @@ class RoomsDetails(Resource):
     def get(self, room_id):
         user_id = request.args.get('user_id')
         current_user = User.find_by_username(get_jwt_identity())
+        room = Room.query.filter_by(id=room_id).first()
         if user_id is None:
             return {"status": "error", 'message': 'user_id can not be null.'}, 400
         elif user_id != str(current_user.id):
             return {"status": "error", 'message': 'You are not authorized.'}, 401
+        elif room is None:
+            return {"status": "error", "message": "Room does not exist."}, 400
         else:
-            return {"status": "success", "data": room_schema.dump(Room.query.filter_by(id=room_id).first())}, 200
+            return {"status": "success", "data": room_schema.dump(room)}, 200
 
 
 class RoomsPlaylist(Resource):
@@ -291,3 +299,39 @@ class RoomsMembers(Resource):
                 # return {"status": "success", "message": "User " + current_user.name + " left the room."}, 200
         db.session.commit()
         return {"status": "success", "message": "You have left the room."}, 200
+
+
+class RoomsMessages(Resource):
+    @jwt_required
+    def get(self, room_id):
+        user_id = request.args.get('user_id')
+        current_user = User.find_by_username(get_jwt_identity())
+        room = Room.query.filter_by(id=room_id).first()
+        if user_id is None:
+            return {"status": "error", 'message': 'user_id can not be null.'}, 400
+        elif user_id != str(current_user.id):
+            return {"status": "error", 'message': 'You are not authorized.'}, 401
+        elif room is None:
+            return {"status": "error", 'message': 'Room does not exist.'}, 400
+        else:
+            result = messages_schema.dump(room.messages)
+            return {"status": "success", "data": result}, 200
+
+    @jwt_required
+    def post(self, room_id):
+        data = message_parser.parse_args()
+        user_id = request.args.get('user_id')
+        current_user = User.find_by_username(get_jwt_identity())
+        room = Room.query.filter_by(id=room_id).first()
+        if user_id is None:
+            return {"status": "error", 'message': 'user_id can not be null.'}, 400
+        elif user_id != str(current_user.id):
+            return {"status": "error", 'message': 'You are not authorized.'}, 401
+        elif room is None:
+            return {"status": "error", 'message': 'Room does not exist.'}, 400
+        elif current_user not in room.members:
+            return {"status": "error", 'message': 'You are not in this room.'}, 400
+        else:
+            db.session.add(Message(content=data['content'], sender_id=user_id, room_id=room_id))
+            db.session.commit()
+            return {"status": "success", "message": "You sent a message."}, 200

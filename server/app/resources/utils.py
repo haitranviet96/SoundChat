@@ -8,10 +8,10 @@ from instance import config
 class S3Resource(Resource):
     def get(self):
         keys = []
-        contents = s3.list_objects(Bucket=config.S3_BUCKET)['Contents']
-        if contents is None:
+        lists = s3.list_objects(Bucket=config.S3_BUCKET)
+        if 'Contents' not in lists:
             return "There are no files."
-        for key in contents:
+        for key in lists['Contents']:
             print(key['Key'])
             keys.append(key['Key'])
         return keys, 200

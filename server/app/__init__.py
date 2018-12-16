@@ -50,6 +50,7 @@ def create_app(config_name):
     api.add_resource(rooms.RoomsPlaylist, '/rooms/<int:room_id>/playlist')
     api.add_resource(rooms.RoomsPlaylistDetails, '/rooms/<int:room_id>/playlist/<int:song_id>')
     api.add_resource(rooms.RoomsMembers, '/rooms/<int:room_id>/members')
+    api.add_resource(rooms.RoomsMessages, '/rooms/<int:room_id>/messages')
 
 
     from .home import home as home_blueprint
