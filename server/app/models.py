@@ -94,8 +94,11 @@ class Room(db.Model):
     time_play = db.Column(db.DATETIME, default=datetime.datetime.now)
     repeat = db.Column(db.Boolean, default=False)
     shuffle = db.Column(db.Boolean, default=False)
-    playlist = db.relationship('Song', foreign_keys=lambda: Song.room_id, backref='room', lazy='dynamic')
+    playlist = db.relationship('Song', foreign_keys=lambda: Song.room_id, backref='room', lazy='dynamic',
+                               cascade="all, delete-orphan")
     current_song = db.relationship("Song", foreign_keys=[current_song_id])
+    messages = db.relationship("Message", foreign_keys=lambda: Message.room_id, backref='room', lazy='dynamic',
+                               cascade="all, delete-orphan")
 
     def __repr__(self):
         return '<Room: {}>'.format(self.name)
@@ -116,7 +119,6 @@ class Message(db.Model):
     sender_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     time = db.Column(db.DATETIME, default=datetime.datetime.utcnow)
     content = db.Column(db.Text)
-    room = db.relationship("Room", foreign_keys=[room_id])
     sender = db.relationship("User", foreign_keys=[sender_id])
 
 
@@ -158,4 +160,8 @@ class MessageSchema(ma.Schema):
 
     class Meta:
         ordered = True
-        fields = ('id', 'room', 'sender', 'time', 'content')
+        fields = ('id', 'sender_id', 'time', 'content')
+
+
+message_schema = MessageSchema()
+messages_schema = MessageSchema(many=True)
