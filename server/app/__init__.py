@@ -6,6 +6,7 @@ from flask_migrate import Migrate
 from flask_restful import Api
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
+from flask_cors import CORS
 
 import boto3
 
@@ -30,6 +31,7 @@ def create_app(config_name):
     db.init_app(app)
     migrate = Migrate(app, db)
     jwt = JWTManager(app)
+    CORS(app)
 
     from app import models
     from app.resources import auth
@@ -51,7 +53,6 @@ def create_app(config_name):
     api.add_resource(rooms.RoomsPlaylistDetails, '/rooms/<int:room_id>/playlist/<int:song_id>')
     api.add_resource(rooms.RoomsMembers, '/rooms/<int:room_id>/members')
     api.add_resource(rooms.RoomsMessages, '/rooms/<int:room_id>/messages')
-
 
     from .home import home as home_blueprint
     app.register_blueprint(home_blueprint)
