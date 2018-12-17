@@ -1,5 +1,6 @@
 .App {
   text-align: center;
+  height: 100%;
 }
 
 .App-logo {
@@ -32,5 +33,5 @@
 }
 
 .login-text-field {
-  width: 350px;
+  width: 400px;
 }
