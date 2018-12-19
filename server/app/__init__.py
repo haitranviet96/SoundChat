@@ -4,6 +4,7 @@
 from flask import Flask
 from flask_migrate import Migrate
 from flask_restful import Api
+from flask_socketio import SocketIO
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
@@ -21,6 +22,7 @@ s3 = boto3.client(
 )
 
 db = SQLAlchemy()
+socketio = SocketIO()
 
 
 def create_app(config_name):
@@ -32,11 +34,13 @@ def create_app(config_name):
     migrate = Migrate(app, db)
     jwt = JWTManager(app)
     CORS(app)
+    socketio.init_app(app)
 
     from app import models
     from app.resources import auth
     from app.resources import rooms
     from app.resources import utils
+    from app import socket
 
     api = Api(app)
 

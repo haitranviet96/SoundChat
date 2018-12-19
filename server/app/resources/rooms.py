@@ -2,6 +2,7 @@ import time
 
 from flask import request
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_socketio import emit, send
 from sqlalchemy import delete
 from werkzeug.utils import secure_filename
 from flask_restful import Resource, reqparse
@@ -141,6 +142,8 @@ class RoomsDetails(Resource):
             room.repeat = data['repeat']
             room.shuffle = data['shuffle']
             db.session.commit()
+            send({'data': {'room_id': room_id, 'action': 'song_change',
+                           'message': 'Player has been changed.'}}, room=room_id)
             return {"status": "success", "data": room_schema.dump(room)}, 200
 
     @jwt_required
@@ -193,6 +196,8 @@ class RoomsPlaylist(Resource):
                         'message': "Something wrong happen while uploading new song. Please try again."}, 400
             db.session.commit()
             result = song_schema.dump(new_song)
+            send({'data': {'room_id': room_id, 'action': 'song_added',
+                           'message': 'Song ' + song_name + ' has been added.'}}, room=room_id)
             return {"status": "success", "data": result}, 200
 
 
@@ -213,6 +218,8 @@ class RoomsPlaylistDetails(Resource):
             s3.delete_object(Bucket=config.S3_BUCKET, Key=song.link[len(config.S3_LOCATION):])
             db.session.delete(song)
             db.session.commit()
+            send({'data': {'room_id': room_id, 'action': 'song_deleted',
+                           'message': 'Song ' + song.name + ' has been deleted.'}}, room=room_id)
             return {"status": "success", "message": song.name + " was deleted."}, 200
 
     @jwt_required
@@ -246,6 +253,8 @@ class RoomsMembers(Resource):
             # user login
             db.session.execute(joins.insert().values(user_id=user_id, room_id=room_id))
             db.session.commit()
+            emit('join', {'data': {'room_id': room_id, 'action': 'member_enter',
+                                   'message': 'Member ' + current_user.username + ' enter the room.'}})
             return {"status": "success", "message": "You successfully enter room " + room.name,
                     "data": room_schema.dump(room)}, 200
 
@@ -297,6 +306,8 @@ class RoomsMembers(Resource):
             else:
                 db.session.execute(delete(joins).where(joins.c.user_id == user_id).where(joins.c.room_id == room_id))
                 # return {"status": "success", "message": "User " + current_user.name + " left the room."}, 200
+        emit('leave', {'data': {'room_id': room_id, 'action': 'member_leave',
+                                'message': 'Member ' + current_user.username + ' left the room.'}})
         db.session.commit()
         return {"status": "success", "message": "You have left the room."}, 200
 
