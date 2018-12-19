@@ -2,7 +2,7 @@ import functools
 
 from flask import request
 from flask_jwt_extended import decode_token
-from flask_socketio import emit, join_room, send, leave_room, disconnect
+from flask_socketio import emit, join_room, leave_room, disconnect
 
 from app.models import User
 from app import socketio
@@ -34,11 +34,11 @@ def connect_handler(current_user):
 def on_join(data):
     room = data['room']
     join_room(room)
-    send(data, room=room)
+    emit('member', data, room=room)
 
 
 @socketio.on('leave')
 def on_leave(data):
     room = data['room']
     leave_room(room)
-    send(data, room=room)
+    emit('member', data, room=room)
