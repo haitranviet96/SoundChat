@@ -1,6 +1,6 @@
 import React from 'react';
 import 'whatwg-fetch';
-import { Media, Player, controls, withMediaProps } from 'react-media-player'
+// import { Media, Player, controls, withMediaProps } from 'react-media-player'
 
 import MediaPlayer from './MediaPlayer'
 
@@ -47,13 +47,23 @@ class MusicPlayer extends React.Component {
     playlist: [],
     autoPlay: true,
     repeatTrack: false,
-    currentTrack: {}
+    currentTrack: {},
+    socket: null
   }
 
   componentWillReceiveProps = (nextProps) => {
     if (nextProps.roomId) {
       this.setState({ isFetchingPlaylist: true })
       this.fetchPlaylist(nextProps.roomId)
+    }
+    if (!this.state.socket && nextProps.socket) {
+      nextProps.socket.on('song', (data) => {
+        console.log('song', data)
+      })
+      nextProps.socket.on('playlist', (data) => {
+        console.log('playlist', data)
+      })
+      this.setState({ socket: nextProps.socket })
     }
   }
 

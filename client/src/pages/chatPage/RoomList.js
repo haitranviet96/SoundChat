@@ -25,12 +25,22 @@ class RoomList extends React.Component {
     joinedRooms: [],
     availableRooms: [],
     createNewRoomModalOpened: false,
+    socket: null
   }
 
   componentDidMount = () => {
     this.fetchJoinedRooms()
     this.fetchAvailableRooms()
   }
+  componentWillReceiveProps = (nextProps) => {
+    if (!this.state.socket && nextProps.socket) {
+      nextProps.socket.on('member', (data) => {
+        console.log('member', data)
+      })
+      this.setState({socket: nextProps.socket}) 
+    }
+  }
+
   fetchJoinedRooms = () => {
     fetch(`${API_URL}/rooms?user_id=${this.props.userId}&join=true`, {
       method: 'GET',
