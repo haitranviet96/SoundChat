@@ -31,14 +31,14 @@ def connect_handler(current_user):
 
 
 @socketio.on('join')
-def on_join(data):
-    room = data['room']
+@authenticated_only
+def on_join(current_user, data):
+    room = data['room_id']
     join_room(room)
-    emit('member', data, room=room)
 
 
 @socketio.on('leave')
-def on_leave(data):
-    room = data['room']
+@authenticated_only
+def on_leave(current_user, data):
+    room = data['room_id']
     leave_room(room)
-    emit('member', data, room=room)

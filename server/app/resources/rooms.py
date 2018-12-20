@@ -8,7 +8,7 @@ from flask_restful import Resource, reqparse
 
 from app import db, s3, socketio
 from app.models import Room, joins, User, Song, room_schema, rooms_schema, songs_schema, song_schema, users_schema, \
-    messages_schema, Message
+    messages_schema, Message, message_schema, user_schema
 from instance import config
 
 room_parser = reqparse.RequestParser()
@@ -96,8 +96,6 @@ class Rooms(Resource):
                         'message': "Something wrong happen while creating room. Please try again."}, 400
             db.session.commit()
             result = room_schema.dump(room)
-            socketio.emit('join', {'data': {'room_id': room.id, 'action': 'member_enter', 'user_id': user_id,
-                                            'message': 'Member ' + current_user.username + ' enter the room.'}})
             return {"status": "success", "data": result}, 201
 
 
@@ -143,7 +141,7 @@ class RoomsDetails(Resource):
             room.repeat = data['repeat']
             room.shuffle = data['shuffle']
             db.session.commit()
-            socketio.emit('song', {'data': {'room_id': room_id, 'action': 'song_change',
+            socketio.emit('song', {'data': {'room_id': room_id, 'action': 'song_change', 'data': room_schema.dump(room),
                                             'message': 'Music player has been changed.'}}, room=room_id)
             return {"status": "success", "data": room_schema.dump(room)}, 200
 
@@ -197,7 +195,7 @@ class RoomsPlaylist(Resource):
                         'message': "Something wrong happen while uploading new song. Please try again."}, 400
             db.session.commit()
             result = song_schema.dump(new_song)
-            socketio.emit('playlist', {'data': {'room_id': room_id, 'action': 'song_added', 'song_id': new_song.id,
+            socketio.emit('playlist', {'data': {'room_id': room_id, 'action': 'song_added', 'data': result,
                                                 'message': 'Song ' + song_name + ' has been added.'}}, room=room_id)
             return {"status": "success", "data": result}, 200
 
@@ -254,8 +252,11 @@ class RoomsMembers(Resource):
             # user login
             db.session.execute(joins.insert().values(user_id=user_id, room_id=room_id))
             db.session.commit()
-            socketio.emit('join', {'data': {'room_id': room_id, 'action': 'member_enter', 'user_id': user_id,
-                                            'message': 'Member ' + current_user.username + ' enter the room.'}})
+            socketio.join_room(room)
+            socketio.emit('member',
+                          {'data': {'room_id': room.id, 'action': 'member_enter',
+                                    'data': user_schema.dump(current_user),
+                                    'message': 'Member ' + current_user.username + ' enter the room.'}}, room=room_id)
             return {"status": "success", "message": "You successfully enter room " + room.name,
                     "data": room_schema.dump(room)}, 200
 
@@ -307,8 +308,9 @@ class RoomsMembers(Resource):
             else:
                 db.session.execute(delete(joins).where(joins.c.user_id == user_id).where(joins.c.room_id == room_id))
                 # return {"status": "success", "message": "User " + current_user.name + " left the room."}, 200
-        socketio.emit('leave', {'data': {'room_id': room_id, 'action': 'member_leave', 'user_id': user_id,
-                                         'message': 'Member ' + current_user.username + ' left the room.'}})
+        socketio.emit('member',
+                      {'data': {'room_id': room_id, 'action': 'member_leave', 'data': user_schema.dump(current_user),
+                                'message': 'Member ' + current_user.username + ' left the room.'}}, room=room_id)
         db.session.commit()
         return {"status": "success", "message": "You have left the room."}, 200
 
@@ -344,9 +346,10 @@ class RoomsMessages(Resource):
         elif current_user not in room.members:
             return {"status": "error", 'message': 'You are not in this room.'}, 400
         else:
-            db.session.add(Message(content=data['content'], sender_id=user_id, room_id=room_id))
+            message = Message(content=data['content'], sender_id=user_id, room_id=room_id)
+            db.session.add(message)
             db.session.commit()
             socketio.emit('message',
-                          {'data': {'room_id': room_id, 'action': 'message', 'user_id': user_id,
-                                    'content': data['content']}})
+                          {'data': {'room_id': room_id, 'action': 'message', 'data': message_schema.dump(message)}},
+                          room=room_id)
             return {"status": "success", "message": "You sent a message."}, 200
