@@ -1,8 +1,7 @@
 import datetime
 
 from flask_restful import Resource, reqparse
-from flask_jwt_extended import (create_access_token, create_refresh_token, jwt_required, jwt_refresh_token_required,
-                                get_jwt_identity)
+from flask_jwt_extended import (create_access_token, jwt_required, get_jwt_identity)
 
 from app.models import User
 
@@ -35,13 +34,11 @@ class UserRegistration(Resource):
             new_user.save_to_db()
             expires = datetime.timedelta(days=7)
             access_token = create_access_token(identity=data['username'], expires_delta=expires)
-            refresh_token = create_refresh_token(identity=data['username'])
             return {
                 "status": "success",
                 'message': 'User {} was created'.format(data['username']),
                 'user_id': new_user.id,
-                'access_token': access_token,
-                'refresh_token': refresh_token
+                'access_token': access_token
             }
         except:
             return {"status": 'error', 'message': 'Something went wrong'}, 500
@@ -58,25 +55,15 @@ class UserLogin(Resource):
         if current_user.verify_password(data['password']):
             expires = datetime.timedelta(days=7)
             access_token = create_access_token(identity=data['username'], expires_delta=expires)
-            refresh_token = create_refresh_token(identity=data['username'])
             return {
                 "status": "success",
                 'message': 'Logged in as {}'.format(current_user.username),
                 'user_id': current_user.id,
-                'access_token': access_token,
-                'refresh_token': refresh_token
+                'access_token': access_token
             }
 
         else:
             return {"status": "error", 'message': 'Wrong credentials'}
-
-
-class TokenRefresh(Resource):
-    @jwt_refresh_token_required
-    def post(self):
-        current_user = get_jwt_identity()
-        access_token = create_access_token(identity=current_user)
-        return {"status": "success", 'access_token': access_token}, 200
 
 
 class SecretResource(Resource):

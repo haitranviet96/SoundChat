@@ -46,7 +46,6 @@ def create_app(config_name):
 
     api.add_resource(auth.UserRegistration, '/registration')
     api.add_resource(auth.UserLogin, '/login')
-    api.add_resource(auth.TokenRefresh, '/token/refresh')
     api.add_resource(auth.SecretResource, '/secret')
 
     api.add_resource(utils.S3Resource, '/s3')
