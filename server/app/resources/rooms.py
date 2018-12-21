@@ -32,23 +32,18 @@ class Rooms(Resource):
         """
         Return the rooms list base on variable on the / route
         """
-        user_id = request.args.get('user_id')
         join = request.args.get('join')
         limit = request.args.get('limit')
 
         current_user = User.find_by_username(get_jwt_identity())
 
-        if user_id is None:
-            return {"status": "error", 'message': 'user_id can not be null.'}, 400
-        elif user_id != str(current_user.id):
-            return {"status": "error", 'message': 'You are not authorized.'}, 401
-        elif join is None:
+        if join is None:
             room_list = Room.query.all()
         else:
             if join == 'true':
                 room_list = current_user.joined_room
             else:
-                room_list = Room.query.filter(~Room.members.any(id=user_id)) \
+                room_list = Room.query.filter(~Room.members.any(id=current_user.id)) \
                     .limit(limit if limit is not None else 15).all()
         result = rooms_schema.dump(room_list)
         return {"status": "success", "data": result}, 200
@@ -58,7 +53,6 @@ class Rooms(Resource):
         """
         Create the room
         """
-        user_id = request.args.get('user_id')
         data = room_parser.parse_args()
         if 'song' not in request.files:
             return {"status": "error", 'message': 'You have to upload at least one song'}, 400
@@ -66,11 +60,7 @@ class Rooms(Resource):
             return {"status": "error", 'message': 'Room {} already exists'.format(data['name'])}, 400
         current_user = User.find_by_username(get_jwt_identity())
         song = request.files["song"]
-        if user_id is None:
-            return {"status": "error", 'message': 'user_id can not be null.'}, 400
-        elif user_id != str(current_user.id):
-            return {"status": "error", 'message': 'You are not authorized.'}, 401
-        elif song.filename == "":
+        if song.filename == "":
             return {"status": "error", 'message': "Please select a file"}, 400
         elif not (song and allowed_file(song.filename)):
             return {"status": "error", 'message': "Files must be in mp3 format."}, 400
@@ -82,11 +72,11 @@ class Rooms(Resource):
                 song_name = secure_filename(song.filename)
                 link = upload_file_to_s3(song, config.S3_BUCKET)
                 db.session.flush()
-                db.session.execute(joins.insert().values(user_id=user_id, room_id=room.id))
+                db.session.execute(joins.insert().values(user_id=current_user.id, room_id=room.id))
                 new_song = Song(name=song_name, link=link, room_id=room.id)
                 room.current_song_id = new_song.id
                 room.current_song = new_song
-                room.owner_id = user_id
+                room.owner_id = current_user.id
                 db.session.add(new_song)
             except Exception as e:
                 if link is not None:
@@ -122,15 +112,12 @@ def upload_file_to_s3(file, bucket_name, acl="public-read"):
 class RoomsDetails(Resource):
     @jwt_required
     def put(self, room_id):
-        user_id = request.args.get('user_id')
         current_user = User.find_by_username(get_jwt_identity())
         data = room_update_parser.parse_args()
         new_song_id = data['current_song_id']
         song = Song.query.filter_by(id=new_song_id).first()
         room = Room.query.filter_by(id=room_id).first()
-        if user_id is None:
-            return {"status": "error", 'message': 'user_id can not be null.'}, 400
-        elif user_id != str(current_user.id):
+        if room.owner_id != current_user.id:
             return {"status": "error", 'message': 'You are not authorized.'}, 401
         elif room is None:
             return {"status": "error", "message": "Room does not exist."}, 400
@@ -155,13 +142,10 @@ class RoomsDetails(Resource):
 
     @jwt_required
     def get(self, room_id):
-        user_id = request.args.get('user_id')
         current_user = User.find_by_username(get_jwt_identity())
         room = Room.query.filter_by(id=room_id).first()
-        if user_id is None:
-            return {"status": "error", 'message': 'user_id can not be null.'}, 400
-        elif user_id != str(current_user.id):
-            return {"status": "error", 'message': 'You are not authorized.'}, 401
+        if current_user not in room.members:
+            return {"status": "error", 'message': 'You are not in that room.'}, 401
         elif room is None:
             return {"status": "error", "message": "Room does not exist."}, 400
         else:
@@ -245,20 +229,15 @@ class RoomsPlaylistDetails(Resource):
 class RoomsMembers(Resource):
     @jwt_required
     def post(self, room_id):
-        user_id = request.args.get('user_id')
         current_user = User.find_by_username(get_jwt_identity())
         room = Room.query.filter_by(id=room_id).first()
-        if user_id is None:
-            return {"status": "error", 'message': 'user_id can not be null.'}, 400
-        elif user_id != str(current_user.id):
-            return {"status": "error", 'message': 'You are not authorized.'}, 401
-        elif room is None:
+        if room is None:
             return {"status": "error", 'message': 'Room does not exist.'}, 400
         elif current_user in room.members:
             return {"status": "error", 'message': 'You are already in this room.'}, 400
         else:
             # user login
-            db.session.execute(joins.insert().values(user_id=user_id, room_id=room_id))
+            db.session.execute(joins.insert().values(user_id=current_user.id, room_id=room_id))
             db.session.commit()
             socketio.join_room(room)
             socketio.emit('member',
@@ -270,14 +249,9 @@ class RoomsMembers(Resource):
 
     @jwt_required
     def get(self, room_id):
-        user_id = request.args.get('user_id')
         current_user = User.find_by_username(get_jwt_identity())
         room = Room.query.filter_by(id=room_id).first()
-        if user_id is None:
-            return {"status": "error", 'message': 'user_id can not be null.'}, 400
-        elif user_id != str(current_user.id):
-            return {"status": "error", 'message': 'You are not authorized.'}, 401
-        elif room is None:
+        if room is None:
             return {"status": "error", 'message': 'Room does not exist.'}, 400
         elif current_user not in room.members:
             return {"status": "error", 'message': 'You are not in this room.'}, 400
@@ -286,20 +260,16 @@ class RoomsMembers(Resource):
 
     @jwt_required
     def delete(self, room_id):
-        user_id = request.args.get('user_id')
         current_user = User.find_by_username(get_jwt_identity())
         room = Room.query.filter_by(id=room_id).first()
-        if user_id is None:
-            return {"status": "error", 'message': 'user_id can not be null.'}, 400
-        elif user_id != str(current_user.id):
-            return {"status": "error", 'message': 'You are not authorized.'}, 401
-        elif room is None:
+        if room is None:
             return {"status": "error", 'message': 'Room does not exist.'}, 400
         elif current_user not in room.members:
             return {"status": "error", 'message': 'You are not in this room.'}, 400
         elif room.members.count() == 1:
             # delete room + delete song + delete joins
-            db.session.execute(delete(joins).where(joins.c.user_id == user_id).where(joins.c.room_id == room_id))
+            db.session.execute(
+                delete(joins).where(joins.c.user_id == current_user.id).where(joins.c.room_id == room_id))
             room.current_song_id = None
             for song in room.playlist:
                 s3.delete_object(Bucket=config.S3_BUCKET, Key=song.link[len(config.S3_LOCATION):])
@@ -309,31 +279,26 @@ class RoomsMembers(Resource):
                 # make some one owner , then delete join
                 new_owner = room.members[1]
                 room.owner_id = new_owner.id
-                db.session.execute(delete(joins).where(joins.c.user_id == user_id).where(joins.c.room_id == room_id))
-                # return {"status": "success",
-                #         "message": "User " + new_owner.name + " becomes room owner."
-                #                                               " User " + current_user.name + " left the room."}, 200
+                db.session.execute(
+                    delete(joins).where(joins.c.user_id == current_user.id).where(joins.c.room_id == room_id))
+                message = "User " + new_owner.name + " becomes room owner." \
+                                                     " User " + current_user.name + " left the room."
             else:
-                db.session.execute(delete(joins).where(joins.c.user_id == user_id).where(joins.c.room_id == room_id))
-                # return {"status": "success", "message": "User " + current_user.name + " left the room."}, 200
-        socketio.emit('member',
-                      {'data': {'room_id': room_id, 'action': 'member_leave', 'data': user_schema.dump(current_user),
-                                'message': 'Member ' + current_user.username + ' left the room.'}}, room=room_id)
-        db.session.commit()
+                db.session.execute(
+                    delete(joins).where(joins.c.user_id == current_user.id).where(joins.c.room_id == room_id))
+                message = "User " + current_user.name + " left the room."
+            socketio.emit('member', {'data': {'room_id': room_id, 'action': 'member_leave',
+                                              'data': user_schema.dump(current_user), 'message': message}},
+                          room=room_id)
+            db.session.commit()
         return {"status": "success", "message": "You have left the room."}, 200
 
 
 class RoomsMessages(Resource):
     @jwt_required
     def get(self, room_id):
-        user_id = request.args.get('user_id')
-        current_user = User.find_by_username(get_jwt_identity())
         room = Room.query.filter_by(id=room_id).first()
-        if user_id is None:
-            return {"status": "error", 'message': 'user_id can not be null.'}, 400
-        elif user_id != str(current_user.id):
-            return {"status": "error", 'message': 'You are not authorized.'}, 401
-        elif room is None:
+        if room is None:
             return {"status": "error", 'message': 'Room does not exist.'}, 400
         else:
             result = messages_schema.dump(room.messages)
@@ -342,19 +307,14 @@ class RoomsMessages(Resource):
     @jwt_required
     def post(self, room_id):
         data = message_parser.parse_args()
-        user_id = request.args.get('user_id')
         current_user = User.find_by_username(get_jwt_identity())
         room = Room.query.filter_by(id=room_id).first()
-        if user_id is None:
-            return {"status": "error", 'message': 'user_id can not be null.'}, 400
-        elif user_id != str(current_user.id):
-            return {"status": "error", 'message': 'You are not authorized.'}, 401
-        elif room is None:
+        if room is None:
             return {"status": "error", 'message': 'Room does not exist.'}, 400
         elif current_user not in room.members:
             return {"status": "error", 'message': 'You are not in this room.'}, 400
         else:
-            message = Message(content=data['content'], sender_id=user_id, room_id=room_id)
+            message = Message(content=data['content'], sender_id=current_user.id, room_id=room_id)
             db.session.add(message)
             db.session.commit()
             socketio.emit('message',
