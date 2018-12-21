@@ -8,7 +8,7 @@ from flask_restful import Resource, reqparse
 
 from app import db, s3, socketio
 from app.models import Room, joins, User, Song, room_schema, rooms_schema, songs_schema, song_schema, users_schema, \
-    messages_schema, Message, message_schema, user_schema
+    messages_schema, Message, message_schema, user_schema, RoomStatus
 from instance import config
 
 room_parser = reqparse.RequestParser()
@@ -18,6 +18,7 @@ room_update_parser = reqparse.RequestParser()
 room_update_parser.add_argument('current_song_id', type=int, required=True)
 room_update_parser.add_argument('repeat', type=bool, required=True)
 room_update_parser.add_argument('shuffle', type=bool, required=True)
+room_update_parser.add_argument('status', type=str, required=True)
 
 message_parser = reqparse.RequestParser()
 message_parser.add_argument('content', required=True)
@@ -136,14 +137,21 @@ class RoomsDetails(Resource):
         elif song is None or song.room_id != room_id:
             return {"status": "error", 'message': "The song is not exist."}, 400
         else:
-            room.current_song_id = new_song_id
-            room.time_play = time.strftime('%Y-%m-%d %H:%M:%S')
-            room.repeat = data['repeat']
-            room.shuffle = data['shuffle']
+            if data['status'] == 'pause':
+                if room.status == data['status']:
+                    return {'status': 'error', 'message': 'Room playlist has already been paused.'}, 400
+                else:
+                    room.status = RoomStatus.PAUSE
+            else:
+                room.status = RoomStatus.PLAYING
+                room.current_song_id = new_song_id
+                room.time_play = time.strftime('%Y-%m-%d %H:%M:%S')
+                room.repeat = data['repeat']
+                room.shuffle = data['shuffle']
             db.session.commit()
-            socketio.emit('song', {'data': {'room_id': room_id, 'action': 'song_change', 'data': room_schema.dump(room),
-                                            'message': 'Music player has been changed.'}}, room=room_id)
-            return {"status": "success", "data": room_schema.dump(room)}, 200
+        socketio.emit('song', {'data': {'room_id': room_id, 'action': 'song_change', 'data': room_schema.dump(room),
+                                        'message': 'Music player has been changed.'}}, room=room_id)
+        return {"status": "success", "data": room_schema.dump(room)}, 200
 
     @jwt_required
     def get(self, room_id):
