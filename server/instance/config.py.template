@@ -5,7 +5,9 @@ JWT_SECRET_KEY = 'jwt-secret-string'
 
 JSON_SORT_KEYS = False
 
+AWS_S3_FILE_OVERWRITE = False
 S3_BUCKET = "S3_BUCKET_NAME"
 S3_KEY = "S3_ACCESS_KEY"
 S3_SECRET = "S3_SECRET_ACCESS_KEY"
+S3_REGION = "S3_REGION"
 S3_LOCATION = 'http://{}.s3.amazonaws.com/'.format(S3_BUCKET)
