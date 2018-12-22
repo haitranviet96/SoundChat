@@ -98,7 +98,7 @@ class Room(db.Model):
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     status = db.Column(db.Enum(RoomStatus), default=RoomStatus.PLAYING)
     current_song_id = db.Column(db.Integer, db.ForeignKey('songs.id', use_alter=True))
-    time_play = db.Column(db.DATETIME, default=datetime.datetime.now)
+    time_play = db.Column(db.DATETIME, default=datetime.datetime.utcnow)
     repeat = db.Column(db.Boolean, default=False)
     shuffle = db.Column(db.Boolean, default=False)
     playlist = db.relationship('Song', foreign_keys=lambda: Song.room_id, backref='room', lazy='dynamic',
