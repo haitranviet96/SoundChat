@@ -14,4 +14,4 @@ def homepage():
 
 @home.route('/<path:path>')
 def send_file(path):
-    return send_from_directory('templates', path)
+    return send_from_directory('./templates/', path)
