@@ -239,7 +239,6 @@ class RoomsMembers(Resource):
             # user login
             db.session.execute(joins.insert().values(user_id=current_user.id, room_id=room_id))
             db.session.commit()
-            socketio.join_room(room)
             socketio.emit('member',
                           {'data': {'room_id': room.id, 'action': 'member_enter',
                                     'data': user_schema.dump(current_user),
@@ -286,7 +285,7 @@ class RoomsMembers(Resource):
             else:
                 db.session.execute(
                     delete(joins).where(joins.c.user_id == current_user.id).where(joins.c.room_id == room_id))
-                message = "User " + current_user.name + " left the room."
+                message = "User " + current_user.username + " left the room."
             socketio.emit('member', {'data': {'room_id': room_id, 'action': 'member_leave',
                                               'data': user_schema.dump(current_user), 'message': message}},
                           room=room_id)
