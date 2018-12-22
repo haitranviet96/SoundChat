@@ -64,7 +64,7 @@ class MusicPlayer extends React.Component {
     if (!this.state.socket && nextProps.socket) {
       nextProps.socket.on('song', (data) => {
         console.log('song', data)
-        if (data.room_id.toString() === this.props.roomId) {
+        if (data.data.room_id.toString() === this.props.roomId) {
           this.setState({
             time_play: data.data.data.time_play,
             repeatTrack: data.data.data.repeat,
@@ -79,7 +79,7 @@ class MusicPlayer extends React.Component {
       })
       nextProps.socket.on('playlist', (data) => {
         console.log('playlist', data)
-        if (data.room_id.toString() === this.props.roomId) {
+        if (data.data.room_id.toString() === this.props.roomId) {
           this.state.playlist.push(data.data.data)
           this.setState({ playlist: this.state.playlist })
         }
