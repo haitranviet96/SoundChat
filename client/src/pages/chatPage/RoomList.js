@@ -135,7 +135,12 @@ class RoomList extends React.Component {
           <ListItemText inset primary="Create new room" />
         </ListItem>
         <CreateNewRoomModal
-          openRoom={(data) => { this.props.openRoom(data); this.fetchJoinedRooms(); }}
+          openRoom={(data) => {
+            this.props.openRoom(data); 
+            this.state.socket.emit('join', {
+              room_id: data.id
+            }); this.fetchJoinedRooms(); 
+          }}
           accessToken={this.props.accessToken}
           userId={this.props.userId}
           open={this.state.createNewRoomModalOpened}

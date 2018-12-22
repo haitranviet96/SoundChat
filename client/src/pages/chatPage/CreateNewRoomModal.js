@@ -32,6 +32,14 @@ class CreateNewRoomModal extends React.Component {
   }
 
   createRoom = () => {
+    if (this.state.song.type !== 'audio/mp3') {
+      this.setState({
+        songError: true,
+        songErrorText: 'Files must be in mp3 format.'
+      })
+      return;
+    }
+
     this.setState({ creatingRoom: true })
 
     const formData = new FormData();

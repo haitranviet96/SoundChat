@@ -91,6 +91,11 @@ class MusicPlayer extends React.Component {
   }
 
   onFileUploadChange = (e) => {
+    if (e.target.files[0].type !== 'audio/mp3') {
+      alert('Files must be in mp3 format')
+      return;
+    }
+
     const formData = new FormData();
     formData.append('song', e.target.files[0]);
 
@@ -152,6 +157,7 @@ class MusicPlayer extends React.Component {
                 return response.json()
               })
               .then((json) => {
+                if (json.status === 'error') alert(json.message)
               }).catch((ex) => {
                 console.log('parsing failed', ex)
               })
@@ -179,6 +185,7 @@ class MusicPlayer extends React.Component {
         return response.json()
       })
       .then((json) => {
+        if (json.status === 'error') alert(json.message)
       }).catch((ex) => {
         console.log('parsing failed', ex)
       })
@@ -206,6 +213,7 @@ class MusicPlayer extends React.Component {
         return response.json()
       })
       .then((json) => {
+        if (json.status === 'error') alert(json.message)
       }).catch((ex) => {
         console.log('parsing failed', ex)
       })
@@ -241,6 +249,7 @@ class MusicPlayer extends React.Component {
         return response.json()
       })
       .then((json) => {
+        if (json.status === 'error') alert(json.message)
       }).catch((ex) => {
         console.log('parsing failed', ex)
       })
