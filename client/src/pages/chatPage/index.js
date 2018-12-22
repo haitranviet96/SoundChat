@@ -91,6 +91,12 @@ class ChatPage extends React.Component {
       })
     }
   }
+  updateCurrentRoomDataById = (roomId) => {
+    console.log(roomId)
+    const currentRoom = this.state.joinedRooms.find(room => room.id === roomId)
+    console.log(currentRoom)
+    if (currentRoom) this.setState({ currentRoom })
+  }
 
   componentDidMount = () => {
     if (!this.state.socket && this.props.authInfo.accessToken) {
@@ -132,6 +138,7 @@ class ChatPage extends React.Component {
             members={this.state.currentMembers}
             exitRoom={this.exitRoom}
             fetchMembers={this.fetchMembers}
+            updateCurrentRoomDataById={this.updateCurrentRoomDataById}
           ></RoomList>
         </Grid>
         <Grid item xs={6} style={{ borderRight: '1px #DCDCDC solid' }}>

@@ -29,11 +29,11 @@ class RoomList extends React.Component {
   componentWillReceiveProps = (nextProps) => {
     if (!this.props.socket && nextProps.socket) {
       nextProps.socket.on('member', (res) => {
-        console.log(res)
-        console.log(this.props.currentRoom)
-        console.log(this.props.currentRoom && this.props.currentRoom.id === res.data.room_id)
         if (this.props.currentRoom && this.props.currentRoom.id === res.data.room_id) this.props.fetchMembers(res.data.room_id)
         this.props.fetchRooms()
+        setTimeout(() => {
+          if (this.props.currentRoom && this.props.currentRoom.id === res.data.room_id) this.props.updateCurrentRoomDataById(res.data.room_id)
+        }, 3000);
       })
     }
   }
@@ -123,7 +123,12 @@ class RoomList extends React.Component {
                             return (
                               <ListItem button key={index}>
                                 <ListItemIcon>
-                                  <StarBorder style={{ display: 'none' }} />
+                                  {
+                                    member.id === this.props.currentRoom.owner_id
+                                      ? (
+                                        <StarBorder />
+                                      ) : <StarBorder style={{ display: 'none' }} />
+                                  }
                                 </ListItemIcon>
                                 <ListItemText inset primary={member.username} />
                               </ListItem>
