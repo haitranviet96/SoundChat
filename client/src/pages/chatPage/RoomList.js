@@ -22,59 +22,19 @@ class RoomList extends React.Component {
   state = {
     joinedRoomsOpened: true,
     availableRoomsOpened: true,
-    joinedRooms: [],
-    availableRooms: [],
-    createNewRoomModalOpened: false,
-    socket: null
+    membersOpened: true,
+    createNewRoomModalOpened: false
   }
 
-  componentDidMount = () => {
-    this.fetchJoinedRooms()
-    this.fetchAvailableRooms()
-  }
   componentWillReceiveProps = (nextProps) => {
-    if (!this.state.socket && nextProps.socket) {
-      nextProps.socket.on('member', (data) => {
-        console.log('member', data)
+    if (!this.props.socket && nextProps.socket) {
+      nextProps.socket.on('member', (res) => {
+        if (this.props.currentRoom && this.props.currentRoom.id === res.room_id) this.props.fetchMembers(res.room_id)
+        this.props.fetchRooms()
       })
-      this.setState({ socket: nextProps.socket })
     }
   }
 
-  fetchJoinedRooms = () => {
-    fetch(`${API_URL}/rooms?join=true`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.props.accessToken}`
-      }
-    })
-      .then((response) => {
-        return response.json()
-      })
-      .then((json) => {
-        if (json.status === 'success') this.setState({ joinedRooms: json.data })
-      }).catch((ex) => {
-        console.log('parsing failed', ex)
-      })
-  }
-  fetchAvailableRooms = () => {
-    fetch(`${API_URL}/rooms?join=false`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.props.accessToken}`
-      }
-    })
-      .then((response) => {
-        return response.json()
-      })
-      .then((json) => {
-        if (json.status === 'success') this.setState({ availableRooms: json.data })
-      }).catch((ex) => {
-        console.log('parsing failed', ex)
-      })
-  }
   joinRoom = (room) => {
     fetch(`${API_URL}/rooms/${room.id}/members?`, {
       method: 'POST',
@@ -89,10 +49,9 @@ class RoomList extends React.Component {
       .then((json) => {
         if (json.status === 'success') {
           this.props.openRoom(room);
-          this.fetchJoinedRooms();
-          this.fetchAvailableRooms();
-          this.state.socket.emit('join', {
-            room_id: this.props.roomId
+          this.props.fetchRooms()
+          this.props.socket.emit('join', {
+            room_id: room.id
           })
         }
       }).catch((ex) => {
@@ -112,11 +71,10 @@ class RoomList extends React.Component {
       })
       .then((json) => {
         if (json.status === 'success') {
-          if (this.props.roomId === room.id) this.props.openRoom(null);
-          this.fetchJoinedRooms();
-          this.fetchAvailableRooms();
-          this.state.socket.emit('leave', {
-            room_id: this.props.roomId
+          if (this.props.currentRoom && this.props.currentRoom.id === room.id) this.props.exitRoom();
+          this.props.fetchRooms()
+          this.props.socket.emit('leave', {
+            room_id: room.id
           })
         }
       }).catch((ex) => {
@@ -127,7 +85,58 @@ class RoomList extends React.Component {
   render() {
     return (
       <List component="nav">
-
+        {
+          this.props.currentRoom
+            ? (
+              <ListItem>
+                <ListItemText inset primary={`In: ${this.props.currentRoom.name}`} />
+              </ListItem>
+            ) : null
+        }
+        {
+          this.props.currentRoom
+            ? (
+              <ListItem button onClick={() => this.setState({ membersOpened: !this.state.membersOpened })}>
+                <ListItemIcon>
+                  <People />
+                </ListItemIcon>
+                <ListItemText inset primary="Members" />
+                {this.state.membersOpened ? <ExpandLess /> : <ExpandMore />}
+              </ListItem>
+            ) : null
+        }
+        {
+          this.props.currentRoom
+            ? (
+              <Collapse in={this.state.membersOpened} timeout="auto" unmountOnExit>
+                {
+                  this.props.members.length > 0
+                    ? (
+                      <List component="div" disablePadding>
+                        {
+                          this.props.members.map((member, index) => {
+                            return (
+                              <ListItem button key={index}>
+                                <ListItemIcon>
+                                  <StarBorder style={{ display: 'none' }} />
+                                </ListItemIcon>
+                                <ListItemText inset primary={member.username} />
+                              </ListItem>
+                            )
+                          })
+                        }
+                      </List>
+                    ) : (
+                      <List component="div" disablePadding>
+                        <ListItem button>
+                          <ListItemText inset primary="There are currently no available rooms" />
+                        </ListItem>
+                      </List>
+                    )
+                }
+              </Collapse>
+            ) : null
+        }
         <ListItem button onClick={() => this.setState({ createNewRoomModalOpened: true })}>
           <ListItemIcon>
             <ExposurePlus1 />
@@ -136,10 +145,11 @@ class RoomList extends React.Component {
         </ListItem>
         <CreateNewRoomModal
           openRoom={(data) => {
-            this.props.openRoom(data); 
+            this.props.openRoom(data);
             this.state.socket.emit('join', {
               room_id: data.id
-            }); this.fetchJoinedRooms(); 
+            });
+            this.props.fetchRooms();
           }}
           accessToken={this.props.accessToken}
           userId={this.props.userId}
@@ -156,11 +166,11 @@ class RoomList extends React.Component {
         </ListItem>
         <Collapse in={this.state.joinedRoomsOpened} timeout="auto" unmountOnExit>
           {
-            this.state.joinedRooms.length > 0
+            this.props.joinedRooms.length > 0
               ? (
                 <List component="div" disablePadding>
                   {
-                    this.state.joinedRooms.map((room, index) => {
+                    this.props.joinedRooms.map((room, index) => {
                       return (
                         <ListItem button key={index}>
                           <ListItemIcon>
@@ -194,11 +204,11 @@ class RoomList extends React.Component {
         </ListItem>
         <Collapse in={this.state.availableRoomsOpened} timeout="auto" unmountOnExit>
           {
-            this.state.availableRooms.length > 0
+            this.props.availableRooms.length > 0
               ? (
                 <List component="div" disablePadding>
                   {
-                    this.state.availableRooms.map((room, index) => {
+                    this.props.availableRooms.map((room, index) => {
                       return (
                         <ListItem button key={index} onClick={() => this.joinRoom(room)}>
                           <ListItemIcon>

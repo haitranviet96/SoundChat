@@ -45,51 +45,62 @@ class Playlist extends React.Component {
 
 class MusicPlayer extends React.Component {
   mediaProps = null;
+
   state = {
     playlist: [],
     autoPlay: true,
     repeatTrack: false,
     currentTrack: {},
-    socket: null,
-    status: null,
+    status: 'playing',
     shuffle: false,
     time_play: null
   }
 
   componentWillReceiveProps = (nextProps) => {
-    if (nextProps.roomId) {
-      this.setState({ isFetchingPlaylist: true })
-      this.fetchPlaylist(nextProps.roomId)
+    if (
+      (!this.props.currentRoom && nextProps.currentRoom)
+      || (this.props.currentRoom && nextProps.currentRoom
+        && this.props.currentRoom.id !== nextProps.currentRoom.id)
+    ) {
+      this.setState({
+        isFetchingPlaylist: true,
+        status: nextProps.currentRoom.status,
+        time_play: nextProps.currentRoom.time_play,
+        autoPlay: nextProps.currentRoom.status === 'playing'
+      })
+      this.fetchPlaylist(nextProps.currentRoom.id)
+      if (nextProps.currentRoom.owner_id === nextProps.userId) {
+        this.updateCurrentPlayingStatus(nextProps.currentRoom.id, {
+          current_song_id: nextProps.currentRoom.current_song_id,
+          repeat: nextProps.currentRoom.repeat,
+          shuffle: nextProps.currentRoom.shuffle,
+          status: nextProps.currentRoom.status
+        })
+      }
     }
-    if (!this.state.socket && nextProps.socket) {
-      nextProps.socket.on('song', (data) => {
-        console.log('song', data)
-        if (data.data.room_id === this.props.roomId) {
+
+    if (!this.props.socket && nextProps.socket) {
+      nextProps.socket.on('song', (res) => {
+        console.log('song', res)
+        if (res.data.room_id === this.props.currentRoom.id) {
           this.setState({
-            time_play: data.data.data.time_play,
-            repeatTrack: data.data.data.repeat,
-            shuffle: data.data.data.shuffle,
-            status: data.data.data.status,
-            autoPlay: data.data.data.status === 'playing',
-            currentTrack: this.state.playlist.find(song => song.id === data.data.data.current_song_id) || this.state.currentTrack
+            time_play: res.data.data.time_play,
+            repeatTrack: res.data.data.repeat,
+            shuffle: res.data.data.shuffle,
+            status: res.data.data.status,
+            autoPlay: res.data.data.status === 'playing',
+            currentTrack: this.state.playlist.find(song => song.id === res.data.data.current_song_id) || this.state.currentTrack
           })
-          if (data.data.data.status === 'playing') this.forcePlay()
+          if (res.data.data.status === 'playing') this.forcePlay()
           else this.forcePause()
         }
       })
-      nextProps.socket.on('playlist', (data) => {
-        console.log('playlist', data)
-        if (data.data.room_id === this.props.roomId) {
-          this.state.playlist.push(data.data.data)
+      nextProps.socket.on('playlist', (res) => {
+        console.log('playlist', res)
+        if (res.data.room_id === this.props.currentRoom.id) {
+          this.state.playlist.push(res.data.data)
           this.setState({ playlist: this.state.playlist })
         }
-      })
-      this.setState({ socket: nextProps.socket })
-    }
-    if (nextProps.currentRoom && !this.state.status && !this.state.time_play) {
-      this.setState({
-        time_play: nextProps.currentRoom.time_play,
-        status: nextProps.currentRoom.status
       })
     }
   }
@@ -103,7 +114,7 @@ class MusicPlayer extends React.Component {
     const formData = new FormData();
     formData.append('song', e.target.files[0]);
 
-    fetch(`${API_URL}/rooms/${this.props.roomId}/playlist`, {
+    fetch(`${API_URL}/rooms/${this.props.currentRoom.id}/playlist`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${this.props.accessToken}`
@@ -114,11 +125,6 @@ class MusicPlayer extends React.Component {
         return response.json()
       })
       .then((json) => {
-        console.log(json)
-        // if (json.status === 'success') {
-        //   this.state.playlist.push(json.data)
-        //   this.setState({ playlist: this.state.playlist })
-        // }
       }).catch((ex) => {
         console.log('parsing failed', ex)
       })
@@ -138,52 +144,24 @@ class MusicPlayer extends React.Component {
         if (json.status === 'success') {
           this.setState({
             playlist: json.data,
-            currentTrack: !this.state.currentTrack.name ? json.data[0] : this.state.currentTrack,
-            isFetchingPlaylist: false,
-            autoPlay: this.props.currentRoom.status === 'playing'
+            currentTrack: this.props.currentRoom
+              ? json.data.find(song => song.id === this.props.currentRoom.current_song_id)
+              : json.data[0],
+            isFetchingPlaylist: false
           })
-          if (this.props.currentRoom && sessionStorage.getItem('soundchat-user-id')
-            && this.props.currentRoom.owner_id.toString() === sessionStorage.getItem('soundchat-user-id'))
-            fetch(`${API_URL}/rooms/${this.props.roomId}`, {
-              method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.props.accessToken}`
-              },
-              body: JSON.stringify({
-                current_song_id: !this.state.currentTrack.name ? json.data[0].id : this.state.currentTrack.id,
-                repeat: this.state.repeatTrack,
-                shuffle: this.state.shuffle,
-                status: this.state.status
-              })
-            })
-              .then((response) => {
-                return response.json()
-              })
-              .then((json) => {
-                if (json.status === 'error') alert(json.message)
-              }).catch((ex) => {
-                console.log('parsing failed', ex)
-              })
         }
       }).catch((ex) => {
         console.log('parsing failed', ex)
       })
   }
-  _handleTrackClick = track => {
-    this.setState({ currentTrack: track })
-    fetch(`${API_URL}/rooms/${this.props.roomId}`, {
+  updateCurrentPlayingStatus = (roomId, data) => {
+    fetch(`${API_URL}/rooms/${roomId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.props.accessToken}`
       },
-      body: JSON.stringify({
-        current_song_id: track.id,
-        repeat: this.state.repeatTrack,
-        shuffle: this.state.shuffle,
-        status: this.state.status
-      })
+      body: JSON.stringify(data)
     })
       .then((response) => {
         return response.json()
@@ -193,6 +171,16 @@ class MusicPlayer extends React.Component {
       }).catch((ex) => {
         console.log('parsing failed', ex)
       })
+  }
+
+  _handleTrackClick = track => {
+    this.setState({ currentTrack: track })
+    this.updateCurrentPlayingStatus(this.props.currentRoom.id, {
+      current_song_id: track.id,
+      repeat: this.state.repeat,
+      shuffle: this.state.shuffle,
+      status: this.state.status
+    })
   }
   _navigatePlaylist = direction => {
     const newIndex = mod(
@@ -200,39 +188,28 @@ class MusicPlayer extends React.Component {
       this.state.playlist.length
     )
     this.setState({ currentTrack: this.state.playlist[newIndex] })
-    fetch(`${API_URL}/rooms/${this.props.roomId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.props.accessToken}`
-      },
-      body: JSON.stringify({
-        current_song_id: this.state.playlist[newIndex].id,
-        repeat: this.state.repeatTrack,
-        shuffle: this.state.shuffle,
-        status: this.state.status
-      })
+    this.updateCurrentPlayingStatus(this.props.currentRoom.id, {
+      current_song_id: this.state.playlist[newIndex],
+      repeat: this.state.repeat,
+      shuffle: this.state.shuffle,
+      status: this.state.status
     })
-      .then((response) => {
-        return response.json()
-      })
-      .then((json) => {
-        if (json.status === 'error') alert(json.message)
-      }).catch((ex) => {
-        console.log('parsing failed', ex)
-      })
   }
   forcePause = () => {
-    if (this.props.currentRoom && sessionStorage.getItem('soundchat-user-id')
-      && this.props.currentRoom.owner_id.toString() === sessionStorage.getItem('soundchat-user-id')
+    if (
+      (this.props.currentRoom && this.props.userId
+        && this.props.currentRoom.owner_id === this.props.userId)
+      || !this.mediaProps
     ) return;
-    if (this.mediaProps) this.mediaProps.pause()
+    this.mediaProps.pause()
   }
   forcePlay = () => {
-    if (this.props.currentRoom && sessionStorage.getItem('soundchat-user-id')
-      && this.props.currentRoom.owner_id.toString() === sessionStorage.getItem('soundchat-user-id')
+    if (
+      (this.props.currentRoom && this.props.userId
+        && this.props.currentRoom.owner_id === this.props.userId)
+      || !this.mediaProps
     ) return;
-    if (this.mediaProps) this.mediaProps.play()
+    this.mediaProps.play()
   }
   pause = () => {
     this.setState({ autoPlay: false })
@@ -261,8 +238,7 @@ class MusicPlayer extends React.Component {
 
   renderMediaplayer = () => {
     const { currentTrack, repeatTrack, autoPlay } = this.state
-    // console.log(this.props.currentRoom)
-    console.log(this.state)
+
     if (this.state.isFetchingPlaylist) {
       return (
         <div>...Loading</div>

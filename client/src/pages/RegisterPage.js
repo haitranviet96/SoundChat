@@ -112,10 +112,13 @@ class RegisterPage extends React.Component {
         } else if (json.status === 'success') {
           sessionStorage.setItem('soundchat-user-id', json.user_id)
           sessionStorage.setItem('soundchat-access-token', json.access_token)
-          sessionStorage.setItem('soundchat-refresh-token', json.refresh_token)
           sessionStorage.setItem('soundchat-user', newState.username)
           this.setState({ password: '', confirmPassword: '' })
-          this.props.login()
+          this.props.setAuthInfo({
+            accessToken: json.access_token,
+            userId: json.user_id,
+            userName: newState.username
+          })
         }
       }).catch((ex) => {
         console.log('parsing failed', ex)
@@ -123,7 +126,7 @@ class RegisterPage extends React.Component {
   }
 
   render() {
-    const accessToken = sessionStorage.getItem('soundchat-access-token');
+    const { accessToken } = this.props.authInfo
 
     if (!!accessToken) {
       return <Redirect to='/' />

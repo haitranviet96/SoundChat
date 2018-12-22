@@ -15,20 +15,23 @@ class ChatRoom extends React.Component {
   }
 
   componentWillReceiveProps = (nextProps) => {
-    if (nextProps.roomId) {
+    if (
+      (!this.props.currentRoom && nextProps.currentRoom)
+      || (this.props.currentRoom && nextProps.currentRoom &&
+        this.props.currentRoom.id !== nextProps.currentRoom.id)
+    ) {
       this.setState({ isFetchingMessages: true })
-      this.fetchMessages(nextProps.roomId)
+      this.fetchMessages(nextProps.currentRoom.id)
     }
-    if (!this.state.socket && nextProps.socket) {
-      nextProps.socket.on('message', (data) => {
-        if (data.data.data.sender_id.toString() !== sessionStorage.getItem('soundchat-user-id')
-          && data.data.room_id.toString() === this.props.roomId.toString()
+    if (!this.props.socket && nextProps.socket) {
+      nextProps.socket.on('message', (res) => {
+        if (res.data.data.sender_id !== this.props.userId
+          && res.data.room_id === this.props.currentRoom.id
         ) {
-          this.state.messages.push(data.data.data)
+          this.state.messages.push(res.data.data)
           this.setState({ messages: this.state.messages })
         }
       })
-      this.setState({ socket: nextProps.socket })
     }
   }
 
@@ -48,10 +51,12 @@ class ChatRoom extends React.Component {
         return response.json()
       })
       .then((json) => {
-        if (json.status === 'success') this.setState({
-          messages: json.data,
-          isFetchingMessages: false
-        })
+        if (json.status === 'success') {
+          this.setState({
+            messages: json.data,
+            isFetchingMessages: false
+          })
+        }
       }).catch((ex) => {
         console.log('parsing failed', ex)
       })
@@ -61,7 +66,7 @@ class ChatRoom extends React.Component {
   }
   sendMessage = () => {
     if (this.state.inputMessage.trim() === 0) return;
-    fetch(`${API_URL}/rooms/${this.props.roomId}/messages`, {
+    fetch(`${API_URL}/rooms/${this.props.currentRoom.id}/messages`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

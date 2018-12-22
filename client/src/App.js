@@ -10,27 +10,53 @@ import './App.css';
 
 class App extends Component {
   state = {
-    number: 0
+    accessToken: null,
+    userId: null,
+    userName: null
+  }
+
+  componentDidMount = () => {
+    this.getAuthInfo()
+  }
+
+  clearAuthInfo = () => {
+    this.setState({
+      accessToken: null,
+      userId: null,
+      userName: null
+    })
+  }
+  getAuthInfo = () => {
+    this.setState({
+      accessToken: sessionStorage.getItem('soundchat-access-token'),
+      userId: sessionStorage.getItem('soundchat-user-id'),
+      userName: sessionStorage.getItem('soundchat-user')
+    })
+  }
+  setAuthInfo = ({ accessToken, userId, userName }) => {
+    this.setState({
+      accessToken, userId, userName
+    })
   }
 
   render() {
-    const isLoggedIn = !!sessionStorage.getItem('soundchat-access-token')
-
     return (
       <div className="App">
         <div style={{ display: 'none' }}>{this.state.number}</div>
-        <NavBar isLoggedIn={isLoggedIn} logout={() => { this.setState({ number: Math.random() }) }}></NavBar>
+        <NavBar authInfo={this.state} clearAuthInfo={this.clearAuthInfo}></NavBar>
         <BrowserRouter basename="/">
           <div style={{ height: '100%' }}>
             <Switch>
               <Route
                 path="/login"
-                render={(props) => <LoginPage {...props} login={() => { this.setState({ number: Math.random() }) }} />}
+                render={(props) => <LoginPage {...props} authInfo={this.state} setAuthInfo={this.setAuthInfo} />}
               />
               <Route path="/register"
-                render={(props) => <RegisterPage {...props} login={() => { this.setState({ number: Math.random() }) }} />}
+                render={(props) => <RegisterPage {...props} authInfo={this.state} setAuthInfo={this.setAuthInfo} />}
               ></Route>
-              <Route component={ChatPage}></Route>
+              <Route
+                render={(props) => <ChatPage {...props} authInfo={this.state} setAuthInfo={this.setAuthInfo} />}
+              ></Route>
             </Switch>
           </div>
         </BrowserRouter>
