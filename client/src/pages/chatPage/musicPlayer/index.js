@@ -64,21 +64,25 @@ class MusicPlayer extends React.Component {
     if (!this.state.socket && nextProps.socket) {
       nextProps.socket.on('song', (data) => {
         console.log('song', data)
-        this.setState({
-          time_play: data.data.data.time_play,
-          repeatTrack: data.data.data.repeat,
-          shuffle: data.data.data.shuffle,
-          status: data.data.data.status,
-          autoPlay: data.data.data.status === 'playing',
-          currentTrack: this.state.playlist.find(song => song.id === data.data.data.current_song_id) || this.state.currentTrack
-        })
-        if (data.data.data.status === 'playing') this.forcePlay()
-        else this.forcePause()
+        if (data.room_id.toString() === this.props.roomId) {
+          this.setState({
+            time_play: data.data.data.time_play,
+            repeatTrack: data.data.data.repeat,
+            shuffle: data.data.data.shuffle,
+            status: data.data.data.status,
+            autoPlay: data.data.data.status === 'playing',
+            currentTrack: this.state.playlist.find(song => song.id === data.data.data.current_song_id) || this.state.currentTrack
+          })
+          if (data.data.data.status === 'playing') this.forcePlay()
+          else this.forcePause()
+        }
       })
       nextProps.socket.on('playlist', (data) => {
         console.log('playlist', data)
-        this.state.playlist.push(data.data.data)
-        this.setState({ playlist: this.state.playlist })
+        if (data.room_id.toString() === this.props.roomId) {
+          this.state.playlist.push(data.data.data)
+          this.setState({ playlist: this.state.playlist })
+        }
       })
       this.setState({ socket: nextProps.socket })
     }
