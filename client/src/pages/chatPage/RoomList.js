@@ -29,7 +29,10 @@ class RoomList extends React.Component {
   componentWillReceiveProps = (nextProps) => {
     if (!this.props.socket && nextProps.socket) {
       nextProps.socket.on('member', (res) => {
-        if (this.props.currentRoom && this.props.currentRoom.id === res.room_id) this.props.fetchMembers(res.room_id)
+        console.log(res)
+        console.log(this.props.currentRoom)
+        console.log(this.props.currentRoom && this.props.currentRoom.id === res.data.room_id)
+        if (this.props.currentRoom && this.props.currentRoom.id === res.data.room_id) this.props.fetchMembers(res.data.room_id)
         this.props.fetchRooms()
       })
     }
