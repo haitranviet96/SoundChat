@@ -308,7 +308,7 @@ class MusicPlayer extends React.Component {
           onPlay={() => { }}
           onPause={() => { }}
           onEnded={() => !repeatTrack && this._navigatePlaylist(1)}
-          customStartTime={(new Date().getTime() - new Date(this.state.time_play).getTime()) / 1000}
+          customStartTime={(new Date().getTime() - realTime.getTime()) / 1000}
         />
         <Playlist
           tracks={this.state.playlist}
