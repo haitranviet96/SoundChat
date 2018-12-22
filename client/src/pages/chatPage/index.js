@@ -20,13 +20,20 @@ class ChatPage extends React.Component {
 
   componentDidMount = () => {
     if (sessionStorage.getItem('soundchat-access-token')) {
-      const socket = io('http://3.0.208.25', { query: { jwt: sessionStorage.getItem('soundchat-access-token') } });
+      const socket = io('http://localhost:5000', { query: { jwt: sessionStorage.getItem('soundchat-access-token') } });
       if (socket) {
         socket.connect();
         socket.on('my response', (data) => {
           this.setState({ socket })
         })
       }
+    }
+  }
+  componentDidUpdate = () => {
+    const accessToken = sessionStorage.getItem('soundchat-access-token')
+    if (!accessToken && this.state.socket) {
+      this.state.socket.disconnect()
+      this.setState({ socket: null })
     }
   }
 
