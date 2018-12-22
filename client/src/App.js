@@ -9,17 +9,27 @@ import NavBar from "./components/NavBar";
 import './App.css';
 
 class App extends Component {
+  state = {
+    number: 0
+  }
+
   render() {
     const isLoggedIn = !!sessionStorage.getItem('soundchat-access-token')
 
     return (
       <div className="App">
-        <NavBar isLoggedIn={isLoggedIn}></NavBar>
+        <div style={{ display: 'none' }}>{this.state.number}</div>
+        <NavBar isLoggedIn={isLoggedIn} logout={() => { this.setState({ number: Math.random() }) }}></NavBar>
         <BrowserRouter basename="/">
           <div style={{ height: '100%' }}>
             <Switch>
-              <Route path="/login" component={LoginPage} />
-              <Route path="/register" component={RegisterPage}></Route>
+              <Route
+                path="/login"
+                render={(props) => <LoginPage {...props} login={() => { this.setState({ number: Math.random() }) }} />}
+              />
+              <Route path="/register"
+                render={(props) => <RegisterPage {...props} login={() => { this.setState({ number: Math.random() }) }} />}
+              ></Route>
               <Route component={ChatPage}></Route>
             </Switch>
           </div>

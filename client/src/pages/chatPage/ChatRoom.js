@@ -78,7 +78,11 @@ class ChatRoom extends React.Component {
         console.log(json)
         if (json.status === 'success') {
           this.state.messages.push(
-            { content: this.state.inputMessage }
+            {
+              content: this.state.inputMessage,
+              time: new Date().getTime(),
+              isNew: true
+            }
           );
           this.setState({
             messages: this.state.messages,
@@ -103,12 +107,32 @@ class ChatRoom extends React.Component {
       <Scrollbars style={{ width: '100%', height: '100%' }}>
         {
           this.state.messages.map((message, index) => {
+            let currentTime = new Date(message.time);
+            if (!message.isNew)
+              currentTime = new Date(Date.UTC(
+                currentTime.getFullYear(),
+                currentTime.getMonth(),
+                currentTime.getDate(),
+                currentTime.getHours(),
+                currentTime.getMinutes(),
+                currentTime.getSeconds()
+              ))
+
             return (
-              <p style={{
+              <div style={{
                 textAlign: "left", marginLeft: 20,
               }} key={index}>
-                <span>{message.content}</span>
-              </p>
+                <p style={{ fontSize: '60%' }}>{
+                  currentTime.getHours()
+                  + ':' + currentTime.getMinutes()
+                  + ' '
+                  + currentTime.getDate()
+                  + '-' + currentTime.getMonth()
+                  + '-' + currentTime.getFullYear()
+                }
+                </p>
+                <p>&nbsp;&nbsp;{message.content}</p>
+              </div>
             )
           })
         }

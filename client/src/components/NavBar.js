@@ -45,9 +45,6 @@ class NavBar extends React.Component {
     const { classes } = this.props
     const open = Boolean(anchorEl);
 
-    const isLoggedIn = !!sessionStorage.getItem('soundchat-access-token')
-    console.log(isLoggedIn)
-
     return (
       <div className={classes.root}>
         <AppBar position="static">
@@ -59,7 +56,7 @@ class NavBar extends React.Component {
               Sound Chat
             </Typography>
             {
-              !!sessionStorage.getItem('soundchat-access-token')
+              !!this.props.isLoggedIn
                 ? (
                   <div>
                     {/* <IconButton
@@ -78,7 +75,10 @@ class NavBar extends React.Component {
                     >
                       <span
                         style={{ fontSize: '70%' }}
-                        onClick={() => { sessionStorage.removeItem('soundchat-access-token') }}
+                        onClick={() => { 
+                          sessionStorage.removeItem('soundchat-access-token')
+                          this.props.logout()
+                         }}
                       >Logout</span>
                     </IconButton>
                     <Menu

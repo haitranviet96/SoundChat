@@ -17,13 +17,16 @@ class ChatPage extends React.Component {
   openRoom = (room) => {
     this.setState({ currentRoom: room })
   }
+
   componentDidMount = () => {
-    const socket = io('http://3.0.208.25', { query: { jwt: sessionStorage.getItem('soundchat-access-token') } });
-    if (socket) {
-      socket.connect();
-      socket.on('my response', (data) => {
-        this.setState({ socket })
-      })
+    if (sessionStorage.getItem('soundchat-access-token')) {
+      const socket = io('http://localhost:5000', { query: { jwt: sessionStorage.getItem('soundchat-access-token') } });
+      if (socket) {
+        socket.connect();
+        socket.on('my response', (data) => {
+          this.setState({ socket })
+        })
+      }
     }
   }
 
