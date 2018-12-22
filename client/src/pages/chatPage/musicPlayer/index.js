@@ -49,7 +49,10 @@ class MusicPlayer extends React.Component {
     autoPlay: true,
     repeatTrack: false,
     currentTrack: {},
-    socket: null
+    socket: null,
+    status: null,
+    shuffle: false,
+    time_play: null
   }
 
   componentWillReceiveProps = (nextProps) => {
@@ -60,6 +63,13 @@ class MusicPlayer extends React.Component {
     if (!this.state.socket && nextProps.socket) {
       nextProps.socket.on('song', (data) => {
         console.log('song', data)
+        this.setState({
+          time_play: data.data.data.time_play,
+          repeatTrack: data.data.data.repeat,
+          shuffle: data.data.data.shuffle,
+          status: data.data.data.status,
+          currentTrack: this.state.playlist.find(song => song.id === data.data.data) || this.state.currentTrack
+        })
       })
       nextProps.socket.on('playlist', (data) => {
         console.log('playlist', data)
@@ -67,6 +77,12 @@ class MusicPlayer extends React.Component {
         this.setState({ playlist: this.state.playlist })
       })
       this.setState({ socket: nextProps.socket })
+    }
+    if (nextProps.currentRoom && !this.state.status && !this.state.time_play) {
+      this.setState({
+        time_play: nextProps.currentRoom.time_play,
+        status: nextProps.currentRoom.status
+      })
     }
   }
 
@@ -124,12 +140,32 @@ class MusicPlayer extends React.Component {
       this.state.playlist.length
     )
     this.setState({ currentTrack: this.state.playlist[newIndex] })
+    fetch(`${API_URL}/rooms/${this.props.roomId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.props.accessToken}`
+      },
+      body: JSON.stringify({
+        current_song_id: this.state.playlist[newIndex].id,
+        repeat: this.state.repeatTrack,
+        shuffle: this.state.shuffle,
+        status: this.state.status
+      })
+    })
+      .then((response) => {
+        return response.json()
+      })
+      .then((json) => {
+      }).catch((ex) => {
+        console.log('parsing failed', ex)
+      })
   }
 
   renderMediaplayer = () => {
     const { currentTrack, repeatTrack, autoPlay } = this.state
+    // console.log(this.props.currentRoom)
     console.log(this.state)
-
     if (this.state.isFetchingPlaylist) {
       return (
         <div>...Loading</div>
@@ -174,12 +210,14 @@ class MusicPlayer extends React.Component {
           loop={repeatTrack}
           currentTrack={currentTrack.name}
           repeatTrack={repeatTrack}
+          notOwner={true}
           onPrevTrack={() => { }}
           onNextTrack={() => { }}
           onRepeatTrack={() => { }}
           onPlay={() => { }}
           onPause={() => { }}
           onEnded={() => !repeatTrack && this._navigatePlaylist(1)}
+          customStartTime={(new Date().getTime() - new Date(this.state.time_play).getTime()) / 1000}
         />
         <Playlist
           tracks={this.state.playlist}

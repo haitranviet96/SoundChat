@@ -38,56 +38,71 @@ class MediaPlayer extends Component {
   }
 
   render() {
-    const { src, currentTrack, repeatTrack, autoPlay } = this.props
+    const { src, currentTrack, repeatTrack, autoPlay, notOwner, customStartTime } = this.props
     return (
       <Media>
-        {mediaProps =>
-          <div
-            className={'media-player' + (mediaProps.isFullscreen ? ' media-player--fullscreen' : '')}
-            onKeyDown={keyboardControls.bind(null, mediaProps)}
-            tabIndex="0"
-          >
-            <div
-              className="media-player-element"
-              onClick={() => mediaProps.playPause()}
-            >
-              <Player
-                src={src}
-                loop={repeatTrack}
-                autoPlay={autoPlay}
-                onEnded={this._handleEnded}
-              />
-            </div>
-            <div className="media-controls media-controls--full">
-              <div className="media-row">
-                <CurrentTime className="media-control media-control--current-time" />
-                {currentTrack}
-                <Duration className="media-control media-control--duration" />
-              </div>
-              <div className="media-control-group media-control-group--seek">
-                <Progress className="media-control media-control--progress" />
-                <SeekBar className="media-control media-control--seekbar" />
-              </div>
-              <div className="media-row">
-                <div className="media-control-group">
-                  <MuteUnmute className="media-control media-control--mute-unmute" />
-                </div>
-                <div className="media-control-group">
-                  <PrevTrack className="media-control media-control--prev-track" onClick={this._handlePrevTrack} />
-                  <PlayPause className="media-control media-control--play-pause" />
-                  <NextTrack className="media-control media-control--next-track" onClick={this._handleNextTrack} />
-                </div>
-                <div className="media-control-group">
-                  <Repeat
-                    className="media-control media-control--repeat"
-                    isActive={repeatTrack}
-                    onClick={this._handleRepeatTrack}
+        {
+          mediaProps => {
+            return (
+              <div
+                className={'media-player' + (mediaProps.isFullscreen ? ' media-player--fullscreen' : '')}
+                onKeyDown={keyboardControls.bind(null, mediaProps)}
+                tabIndex="0"
+              >
+                <div
+                  className="media-player-element"
+                  onClick={() => mediaProps.playPause()}
+                >
+                  <Player
+                    src={src}
+                    loop={repeatTrack}
+                    autoPlay={autoPlay}
+                    onEnded={this._handleEnded}
+                    defaultCurrentTime={customStartTime || 0}
                   />
-                  {/* <Fullscreen /> */}
+                </div>
+                <div className="media-controls media-controls--full">
+                  <div className="media-row">
+                    <CurrentTime className="media-control media-control--current-time" />
+                    {currentTrack}
+                    <Duration className="media-control media-control--duration" />
+                  </div>
+                  <div className="media-control-group media-control-group--seek">
+                    <Progress className="media-control media-control--progress" />
+                    {/* <SeekBar className="media-control media-control--seekbar" /> */}
+                  </div>
+                  <div className="media-row">
+                    <div className="media-control-group">
+                      <MuteUnmute className="media-control media-control--mute-unmute" />
+                    </div>
+                    <div className="media-control-group">
+                      {
+                        !notOwner ? <PrevTrack className="media-control media-control--prev-track" onClick={this._handlePrevTrack} /> : null
+                      }
+                      {
+                        !notOwner ? <PlayPause className="media-control media-control--play-pause" /> : null
+                      }
+                      {
+                        !notOwner ? <NextTrack className="media-control media-control--next-track" onClick={this._handleNextTrack} /> : null
+                      }
+                    </div>
+                    <div className="media-control-group">
+                      {
+                        !notOwner ? (
+                          <Repeat
+                            className="media-control media-control--repeat"
+                            isActive={repeatTrack}
+                            onClick={this._handleRepeatTrack}
+                          />
+                        ) : null
+                      }
+                      {/* <Fullscreen /> */}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            )
+          }
         }
       </Media>
     )

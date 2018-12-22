@@ -100,7 +100,7 @@ class RoomList extends React.Component {
       })
   }
   exitRoom = (room) => {
-    fetch(`${API_URL}/rooms/${room.id}/members?`, {
+    fetch(`${API_URL}/rooms/${room.id}/members?user_id=${this.props.userId}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
