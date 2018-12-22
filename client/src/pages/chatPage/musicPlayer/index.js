@@ -69,20 +69,28 @@ class MusicPlayer extends React.Component {
         autoPlay: nextProps.currentRoom.status === 'playing'
       })
       this.fetchPlaylist(nextProps.currentRoom.id)
-      if (nextProps.currentRoom.owner_id === nextProps.userId) {
-        this.updateCurrentPlayingStatus(nextProps.currentRoom.id, {
-          current_song_id: nextProps.currentRoom.current_song_id,
-          repeat: nextProps.currentRoom.repeat,
-          shuffle: nextProps.currentRoom.shuffle,
-          status: nextProps.currentRoom.status
-        })
-      }
+      // if (nextProps.currentRoom.owner_id === nextProps.userId) {
+      //   this.updateCurrentPlayingStatus(nextProps.currentRoom.id, {
+      //     current_song_id: nextProps.currentRoom.current_song_id,
+      //     repeat: nextProps.currentRoom.repeat,
+      //     shuffle: nextProps.currentRoom.shuffle,
+      //     status: nextProps.currentRoom.status
+      //   })
+      // }
     }
 
     if (!this.props.socket && nextProps.socket) {
       nextProps.socket.on('song', (res) => {
         console.log('song', res)
-        if (res.data.room_id === this.props.currentRoom.id) {
+        if (this.props.currentRoom && res.data.room_id === this.props.currentRoom.id) {
+          this.props.updateCurrentRoomData({
+            time_play: res.data.data.time_play,
+            repeatTrack: res.data.data.repeat,
+            shuffle: res.data.data.shuffle,
+            status: res.data.data.status,
+            autoPlay: res.data.data.status === 'playing',
+            currentTrack: this.state.playlist.find(song => song.id === res.data.data.current_song_id) || this.state.currentTrack
+          })
           this.setState({
             time_play: res.data.data.time_play,
             repeatTrack: res.data.data.repeat,
@@ -97,7 +105,7 @@ class MusicPlayer extends React.Component {
       })
       nextProps.socket.on('playlist', (res) => {
         console.log('playlist', res)
-        if (res.data.room_id === this.props.currentRoom.id) {
+        if (this.props.currentRoom && res.data.room_id === this.props.currentRoom.id) {
           this.state.playlist.push(res.data.data)
           this.setState({ playlist: this.state.playlist })
         }
@@ -175,9 +183,15 @@ class MusicPlayer extends React.Component {
 
   _handleTrackClick = track => {
     this.setState({ currentTrack: track })
+    this.props.updateCurrentRoomData({
+      current_song_id: track.id,
+      repeat: this.state.repeatTrack,
+      shuffle: this.state.shuffle,
+      status: this.state.status
+    })
     this.updateCurrentPlayingStatus(this.props.currentRoom.id, {
       current_song_id: track.id,
-      repeat: this.state.repeat,
+      repeat: this.state.repeatTrack,
       shuffle: this.state.shuffle,
       status: this.state.status
     })
@@ -188,9 +202,15 @@ class MusicPlayer extends React.Component {
       this.state.playlist.length
     )
     this.setState({ currentTrack: this.state.playlist[newIndex] })
+    this.props.updateCurrentRoomData({
+      current_song_id: this.state.playlist[newIndex].id,
+      repeat: this.state.repeatTrack,
+      shuffle: this.state.shuffle,
+      status: this.state.status
+    })
     this.updateCurrentPlayingStatus(this.props.currentRoom.id, {
-      current_song_id: this.state.playlist[newIndex],
-      repeat: this.state.repeat,
+      current_song_id: this.state.playlist[newIndex].id,
+      repeat: this.state.repeatTrack,
       shuffle: this.state.shuffle,
       status: this.state.status
     })
@@ -213,31 +233,25 @@ class MusicPlayer extends React.Component {
   }
   pause = () => {
     this.setState({ autoPlay: false })
-    fetch(`${API_URL}/rooms/${this.props.roomId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.props.accessToken}`
-      },
-      body: JSON.stringify({
-        current_song_id: this.state.currentTrack.id,
-        repeat: this.state.repeatTrack,
-        shuffle: this.state.shuffle,
-        status: this.state.status === 'playing' ? 'pause' : 'playing',
-      })
+    this.updateCurrentPlayingStatus(this.props.currentRoom.id, {
+      current_song_id: this.state.currentTrack.id,
+      repeat: this.state.repeatTrack,
+      shuffle: this.state.shuffle,
+      status: this.state.status === 'playing' ? 'pause' : 'playing',
     })
-      .then((response) => {
-        return response.json()
-      })
-      .then((json) => {
-        if (json.status === 'error') alert(json.message)
-      }).catch((ex) => {
-        console.log('parsing failed', ex)
-      })
   }
 
   renderMediaplayer = () => {
-    const { currentTrack, repeatTrack, autoPlay } = this.state
+    const { currentTrack, repeatTrack, autoPlay, time_play } = this.state
+    const utcTime = new Date(time_play);
+    const realTime = new Date(Date.UTC(
+      utcTime.getFullYear(),
+      utcTime.getMonth(),
+      utcTime.getDate(),
+      utcTime.getHours(),
+      utcTime.getMinutes(),
+      utcTime.getSeconds()
+    ))
 
     if (this.state.isFetchingPlaylist) {
       return (
@@ -245,8 +259,8 @@ class MusicPlayer extends React.Component {
       )
     }
 
-    if (this.props.currentRoom && sessionStorage.getItem('soundchat-user-id')
-      && this.props.currentRoom.owner_id.toString() === sessionStorage.getItem('soundchat-user-id')
+    if (this.props.currentRoom && this.props.userId
+      && this.props.currentRoom.owner_id === this.props.userId
     ) {
       return (
         <div className="media-player-wrapper">
@@ -267,7 +281,7 @@ class MusicPlayer extends React.Component {
             pause={this.pause}
             setMediaProps={(ref) => this.mediaProps = ref}
             onEnded={() => !repeatTrack && this._navigatePlaylist(1)}
-            customStartTime={(new Date().getTime() - new Date(this.state.time_play).getTime()) / 1000}
+            customStartTime={(new Date().getTime() - realTime.getTime()) / 1000}
           />
           <Playlist
             tracks={this.state.playlist}
@@ -305,7 +319,7 @@ class MusicPlayer extends React.Component {
     )
   }
   render() {
-    if (this.props.roomId) {
+    if (this.props.currentRoom && this.props.currentRoom.id) {
       return (
         <div>
           <div>

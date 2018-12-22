@@ -49,13 +49,14 @@ class RoomList extends React.Component {
       .then((json) => {
         if (json.status === 'success') {
           this.props.openRoom(room);
-          this.props.fetchRooms()
           this.props.socket.emit('join', {
             room_id: room.id
           })
         }
+        this.props.fetchRooms()
       }).catch((ex) => {
         console.log('parsing failed', ex)
+        this.props.fetchRooms()
       })
   }
   exitRoom = (room) => {
@@ -72,13 +73,14 @@ class RoomList extends React.Component {
       .then((json) => {
         if (json.status === 'success') {
           if (this.props.currentRoom && this.props.currentRoom.id === room.id) this.props.exitRoom();
-          this.props.fetchRooms()
           this.props.socket.emit('leave', {
             room_id: room.id
           })
         }
+        this.props.fetchRooms()
       }).catch((ex) => {
         console.log('parsing failed', ex)
+        this.props.fetchRooms()
       })
   }
 
@@ -146,7 +148,7 @@ class RoomList extends React.Component {
         <CreateNewRoomModal
           openRoom={(data) => {
             this.props.openRoom(data);
-            this.state.socket.emit('join', {
+            this.props.socket.emit('join', {
               room_id: data.id
             });
             this.props.fetchRooms();

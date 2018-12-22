@@ -153,7 +153,7 @@ class ChatPage extends React.Component {
                 accessToken={this.props.authInfo.accessToken}
                 userId={this.props.authInfo.userId}
                 currentRoom={this.state.currentRoom}
-                updateCurrentRoomData={this.state.updateCurrentRoomData}
+                updateCurrentRoomData={this.updateCurrentRoomData}
               ></MusicPlayer>
             </Grid>
             <Grid item xs={1}></Grid>

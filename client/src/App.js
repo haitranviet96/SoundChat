@@ -29,7 +29,7 @@ class App extends Component {
   getAuthInfo = () => {
     this.setState({
       accessToken: sessionStorage.getItem('soundchat-access-token'),
-      userId: sessionStorage.getItem('soundchat-user-id'),
+      userId: parseInt(sessionStorage.getItem('soundchat-user-id')),
       userName: sessionStorage.getItem('soundchat-user')
     })
   }
