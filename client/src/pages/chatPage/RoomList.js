@@ -98,7 +98,7 @@ class RoomList extends React.Component {
         {
           this.props.currentRoom
             ? (
-              <ListItem button onClick={() => this.setState({ membersOpened: !this.state.membersOpened })}>
+              <ListItem style={{ backgroundColor: '#D3D3D3' }} button onClick={() => this.setState({ membersOpened: !this.state.membersOpened })}>
                 <ListItemIcon>
                   <People />
                 </ListItemIcon>
@@ -131,7 +131,7 @@ class RoomList extends React.Component {
                     ) : (
                       <List component="div" disablePadding>
                         <ListItem button>
-                          <ListItemText inset primary="There are currently no available rooms" />
+                          <ListItemText inset primary="There are currently no members" />
                         </ListItem>
                       </List>
                     )
@@ -159,7 +159,7 @@ class RoomList extends React.Component {
           closeCreateNewRoomModal={() => this.setState({ createNewRoomModalOpened: false })}
         ></CreateNewRoomModal>
 
-        <ListItem button onClick={() => this.setState({ joinedRoomsOpened: !this.state.joinedRoomsOpened })}>
+        <ListItem style={{ backgroundColor: '#D3D3D3' }} button onClick={() => this.setState({ joinedRoomsOpened: !this.state.joinedRoomsOpened })}>
           <ListItemIcon>
             <MeetingRoom />
           </ListItemIcon>
@@ -197,7 +197,7 @@ class RoomList extends React.Component {
           }
         </Collapse>
 
-        <ListItem button onClick={() => this.setState({ availableRoomsOpened: !this.state.availableRoomsOpened })}>
+        <ListItem style={{ backgroundColor: '#D3D3D3' }} button onClick={() => this.setState({ availableRoomsOpened: !this.state.availableRoomsOpened })}>
           <ListItemIcon>
             <People />
           </ListItemIcon>
