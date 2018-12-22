@@ -1,6 +1,5 @@
 # app/home/views.py
-
-from flask_jwt_extended import jwt_required
+from flask import render_template, send_from_directory
 
 from . import home
 
@@ -10,15 +9,9 @@ def homepage():
     """
     Render the homepage template on the / route
     """
-    return 'Hello, World!'
-    # return render_template('home/index.html', title="Welcome")
+    return render_template('index.html', title="Welcome")
 
 
-@home.route('/dashboard')
-@jwt_required
-def dashboard():
-    """
-    Render the dashboard template on the /dashboard route
-    """
-    return 'Dashboard'
-    # return render_template('home/dashboard.html', title="Dashboard")
+@home.route('/<path:path>')
+def send_file(path):
+    return send_from_directory('templates', path)

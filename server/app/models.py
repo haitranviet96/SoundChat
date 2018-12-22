@@ -1,7 +1,9 @@
 # app/models.py
 import datetime
+import enum
 
 from flask_marshmallow import Marshmallow, fields
+from marshmallow_enum import EnumField
 from werkzeug.security import generate_password_hash, check_password_hash
 
 import app
@@ -79,6 +81,11 @@ class Song(db.Model):
         return '<Song: {}>'.format(self.name)
 
 
+class RoomStatus(enum.Enum):
+    PLAYING = "playing"
+    PAUSE = "pause"
+
+
 class Room(db.Model):
     """
     Create a Room table
@@ -89,7 +96,7 @@ class Room(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(60), unique=True)
     owner_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    status = db.Column(db.String(10), default='Available')
+    status = db.Column(db.Enum(RoomStatus), default=RoomStatus.PLAYING)
     current_song_id = db.Column(db.Integer, db.ForeignKey('songs.id', use_alter=True))
     time_play = db.Column(db.DATETIME, default=datetime.datetime.now)
     repeat = db.Column(db.Boolean, default=False)
@@ -99,6 +106,8 @@ class Room(db.Model):
     current_song = db.relationship("Song", foreign_keys=[current_song_id])
     messages = db.relationship("Message", foreign_keys=lambda: Message.room_id, backref='room', lazy='dynamic',
                                cascade="all, delete-orphan")
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, onupdate=datetime.datetime.utcnow)
 
     def __repr__(self):
         return '<Room: {}>'.format(self.name)
@@ -135,6 +144,7 @@ users_schema = UserSchema(many=True)
 
 class RoomSchema(ma.Schema):
     time_play = fields.fields.DateTime(format='%Y-%m-%d %H:%M:%S')
+    status = EnumField(RoomStatus, by_value=True)
 
     class Meta:
         ordered = True
