@@ -38,7 +38,7 @@ class CreateNewRoomModal extends React.Component {
     formData.append('name', this.state.name);
     formData.append('song', this.state.song);
 
-    fetch(`${API_URL}/rooms?user_id=${this.props.userId}`, {
+    fetch(`${API_URL}/rooms`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${this.props.accessToken}`

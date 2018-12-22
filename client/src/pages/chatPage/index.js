@@ -22,24 +22,13 @@ class ChatPage extends React.Component {
     if (socket) {
       socket.connect();
       socket.on('my response', (data) => {
-        console.log(data)
+        this.setState({ socket })
       })
-      // socket.on('song', (data) => {
-      //   console.log('song', data)
-      // })
-      // socket.on('playlist', (data) => {
-      //   console.log('playlist', data)
-      // })
-      // socket.on('member', (data) => {
-      //   console.log('member', data)
-      // })
-      this.setState({ socket })
     }
   }
 
   render() {
     const accessToken = sessionStorage.getItem('soundchat-access-token')
-    // if (this.state.currentRoom) console.log(this.state.currentRoom)
 
     if (!accessToken) {
       return <Redirect to='/login' />
@@ -60,6 +49,11 @@ class ChatPage extends React.Component {
         <Grid item xs={6} style={{ borderRight: '1px #DCDCDC solid' }}>
           <ChatRoom
             socket={this.state.socket}
+            currentRoom={this.state.currentRoom}
+            roomId={this.state.currentRoom ? this.state.currentRoom.id : null}
+            userId={sessionStorage.getItem('soundchat-user-id')}
+            username={sessionStorage.getItem('soundchat-user')}
+            accessToken={accessToken}
           ></ChatRoom>
         </Grid>
         <Grid item xs={3}>
@@ -73,6 +67,7 @@ class ChatPage extends React.Component {
                 accessToken={accessToken}
                 userId={sessionStorage.getItem('soundchat-user-id')}
                 username={sessionStorage.getItem('soundchat-user')}
+                currentRoom={this.state.currentRoom}
                 roomId={this.state.currentRoom ? this.state.currentRoom.id : null}
               ></MusicPlayer>
             </Grid>

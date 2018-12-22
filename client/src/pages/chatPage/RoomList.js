@@ -37,12 +37,12 @@ class RoomList extends React.Component {
       nextProps.socket.on('member', (data) => {
         console.log('member', data)
       })
-      this.setState({socket: nextProps.socket}) 
+      this.setState({ socket: nextProps.socket })
     }
   }
 
   fetchJoinedRooms = () => {
-    fetch(`${API_URL}/rooms?user_id=${this.props.userId}&join=true`, {
+    fetch(`${API_URL}/rooms?join=true`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -59,7 +59,7 @@ class RoomList extends React.Component {
       })
   }
   fetchAvailableRooms = () => {
-    fetch(`${API_URL}/rooms?user_id=${this.props.userId}&join=false`, {
+    fetch(`${API_URL}/rooms?join=false`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -76,7 +76,7 @@ class RoomList extends React.Component {
       })
   }
   joinRoom = (room) => {
-    fetch(`${API_URL}/rooms/${room.id}/members?user_id=${this.props.userId}`, {
+    fetch(`${API_URL}/rooms/${room.id}/members?`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -91,13 +91,16 @@ class RoomList extends React.Component {
           this.props.openRoom(room);
           this.fetchJoinedRooms();
           this.fetchAvailableRooms();
+          this.state.socket.emit('join', {
+            room_id: this.props.roomId
+          })
         }
       }).catch((ex) => {
         console.log('parsing failed', ex)
       })
   }
   exitRoom = (room) => {
-    fetch(`${API_URL}/rooms/${room.id}/members?user_id=${this.props.userId}`, {
+    fetch(`${API_URL}/rooms/${room.id}/members?`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
@@ -112,6 +115,9 @@ class RoomList extends React.Component {
           if (this.props.roomId === room.id) this.props.openRoom(null);
           this.fetchJoinedRooms();
           this.fetchAvailableRooms();
+          this.state.socket.emit('leave', {
+            room_id: this.props.roomId
+          })
         }
       }).catch((ex) => {
         console.log('parsing failed', ex)

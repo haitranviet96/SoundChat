@@ -29,6 +29,7 @@ class NavBar extends React.Component {
   state = {
     auth: true,
     anchorEl: null,
+    redirect: false
   };
 
   handleMenu = event => {
@@ -41,30 +42,44 @@ class NavBar extends React.Component {
 
   render() {
     const { anchorEl } = this.state;
-    const { classes, isLoggedIn } = this.props
+    const { classes } = this.props
     const open = Boolean(anchorEl);
+
+    const isLoggedIn = !!sessionStorage.getItem('soundchat-access-token')
+    console.log(isLoggedIn)
 
     return (
       <div className={classes.root}>
         <AppBar position="static">
           <Toolbar>
             <IconButton className={classes.menuButton} color="inherit" aria-label="Menu">
-              <MenuIcon />
+              {/* <MenuIcon /> */}
             </IconButton>
             <Typography variant="h6" color="inherit" className={classes.grow}>
               Sound Chat
             </Typography>
             {
-              isLoggedIn
+              !!sessionStorage.getItem('soundchat-access-token')
                 ? (
                   <div>
-                    <IconButton
+                    {/* <IconButton
                       aria-owns={open ? 'menu-appbar' : undefined}
                       aria-haspopup="true"
                       onClick={this.handleMenu}
                       color="inherit"
                     >
                       <AccountCircle />
+                    </IconButton> */}
+                    <IconButton
+                      aria-owns={open ? 'menu-appbar' : undefined}
+                      aria-haspopup="true"
+                      // onClick={this.handleMenu}
+                      color="inherit"
+                    >
+                      <span
+                        style={{ fontSize: '70%' }}
+                        onClick={() => { sessionStorage.removeItem('soundchat-access-token') }}
+                      >Logout</span>
                     </IconButton>
                     <Menu
                       id="menu-appbar"
