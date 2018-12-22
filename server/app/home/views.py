@@ -1,5 +1,5 @@
 # app/home/views.py
-from flask import render_template, send_from_directory
+from flask import render_template, send_from_directory, redirect, url_for
 
 from . import home
 
@@ -15,3 +15,8 @@ def homepage():
 @home.route('/<path:path>')
 def send_file(path):
     return send_from_directory('./templates/', path)
+
+
+@home.errorhandler(404)
+def handle_404(e):
+    return render_template('index.html', title="Welcome")
