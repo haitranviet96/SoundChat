@@ -280,8 +280,8 @@ class RoomsMembers(Resource):
                 room.owner_id = new_owner.id
                 db.session.execute(
                     delete(joins).where(joins.c.user_id == current_user.id).where(joins.c.room_id == room_id))
-                message = "User " + new_owner.name + " becomes room owner." \
-                                                     " User " + current_user.name + " left the room."
+                message = "User " + new_owner.username + " becomes room owner." \
+                                                         " User " + current_user.username + " left the room."
             else:
                 db.session.execute(
                     delete(joins).where(joins.c.user_id == current_user.id).where(joins.c.room_id == room_id))
@@ -289,7 +289,7 @@ class RoomsMembers(Resource):
             socketio.emit('member', {'data': {'room_id': room_id, 'action': 'member_leave',
                                               'data': user_schema.dump(current_user), 'message': message}},
                           room=room_id)
-            db.session.commit()
+        db.session.commit()
         return {"status": "success", "message": "You have left the room."}, 200
 
 
