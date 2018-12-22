@@ -79,6 +79,7 @@ class LoginPage extends React.Component {
           sessionStorage.setItem('soundchat-access-token', json.access_token)
           sessionStorage.setItem('soundchat-refresh-token', json.refresh_token)
           sessionStorage.setItem('soundchat-user', newState.username)
+          this.props.login()
           this.setState({ password: '' })
         }
       }).catch((ex) => {

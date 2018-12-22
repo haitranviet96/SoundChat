@@ -115,6 +115,7 @@ class RegisterPage extends React.Component {
           sessionStorage.setItem('soundchat-refresh-token', json.refresh_token)
           sessionStorage.setItem('soundchat-user', newState.username)
           this.setState({ password: '', confirmPassword: '' })
+          this.props.login()
         }
       }).catch((ex) => {
         console.log('parsing failed', ex)

@@ -19,6 +19,7 @@ class ScaleX extends Component {
 class PlayPause extends Component {
   _handlePlayPause = () => {
     this.props.media.playPause()
+    this.props.pause()
   }
 
   render() {

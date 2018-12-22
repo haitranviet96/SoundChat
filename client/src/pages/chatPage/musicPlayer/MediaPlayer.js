@@ -39,10 +39,12 @@ class MediaPlayer extends Component {
 
   render() {
     const { src, currentTrack, repeatTrack, autoPlay, notOwner, customStartTime } = this.props
+
     return (
       <Media>
         {
           mediaProps => {
+            this.props.setMediaProps(mediaProps);
             return (
               <div
                 className={'media-player' + (mediaProps.isFullscreen ? ' media-player--fullscreen' : '')}
@@ -80,7 +82,7 @@ class MediaPlayer extends Component {
                         !notOwner ? <PrevTrack className="media-control media-control--prev-track" onClick={this._handlePrevTrack} /> : null
                       }
                       {
-                        !notOwner ? <PlayPause className="media-control media-control--play-pause" /> : null
+                        !notOwner ? <PlayPause pause={this.props.pause} className="media-control media-control--play-pause" /> : null
                       }
                       {
                         !notOwner ? <NextTrack className="media-control media-control--next-track" onClick={this._handleNextTrack} /> : null
